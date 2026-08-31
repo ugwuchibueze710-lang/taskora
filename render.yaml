@@ -2,15 +2,11 @@ services:
   - type: web
     name: taskora
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: npm run build
     startCommand: npm start
     healthCheckPath: /health
-    disk:
-      name: taskora-uploads
-      mountPath: /opt/render/project/src/server/uploads
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -48,6 +44,6 @@ services:
 
 databases:
   - name: taskora-db
-    plan: starter
+    plan: free
     databaseName: taskora
     user: taskora

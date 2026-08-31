@@ -68,11 +68,19 @@ Seeded test accounts (only created if you run `npm run seed`), all password `tes
 
 Profile pictures, provider logos/photos, portfolio photos, and generated invoice PDFs are stored as files on disk
 under `server/uploads/`, with only the file path/URL recorded in PostgreSQL (never the binary itself). This is the
-simplest reliable option that works identically in local dev and on Render without adding a paid object-storage
-API. On Render, attach a **Persistent Disk** to the web service mounted at `server/uploads` (the included
-`render.yaml` already does this) so uploads survive deploys and restarts. If you later outgrow local disk (e.g.
-multiple server instances), the natural next step is an S3-compatible bucket — but that is a deliberate future
-upgrade, not something this app silently depends on today.
+simplest reliable option that works identically in local dev and anywhere on Render without adding a paid
+object-storage API.
+
+**On Render's Free plan** (what `render.yaml` uses by default): free web services cannot attach a Persistent Disk,
+so `server/uploads/` lives on the service's ephemeral local filesystem — uploaded files are wiped on every deploy
+and on any restart caused by the free plan's 15-minute-inactivity spin-down. Everything still works correctly
+(nothing crashes or fakes success), but a provider's uploaded photos, avatars, and past invoice PDFs won't survive
+a redeploy. This is a real, honest limitation of the Free plan, not a bug.
+
+**To make uploads durable**, upgrade the web service to a paid plan (e.g. Starter) in the Render dashboard and
+attach a Persistent Disk mounted at `server/uploads` — no code changes needed, just add the disk and redeploy.
+If you outgrow local disk entirely (e.g. multiple server instances), the natural next step is an S3-compatible
+bucket — a deliberate future upgrade, not something this app silently depends on today.
 
 ## The Groq action engine
 
@@ -121,7 +129,10 @@ provider_marked_complete → customer_confirmed → completed
 
 1. Push this repository to GitHub.
 2. In Render, choose "New Blueprint" and point it at the repo — `render.yaml` defines the web service and the
-   Postgres database together.
+   Postgres database together, both on the **Free** plan by default (no persistent disk, and the free Postgres
+   database expires 30 days after creation with a 14-day grace period to upgrade before deletion — see
+   "Image storage" above and the note below). Edit `render.yaml` (or change the plan in the Render dashboard after
+   first deploy) to move to a paid plan whenever you're ready for durable uploads and a permanent database.
 3. After the first deploy, set these environment variables on the web service (Render dashboard → Environment):
    - `CLIENT_ORIGIN` → your Render URL, e.g. `https://taskora.onrender.com` (needed for Stripe redirect URLs)
    - `GROQ_API_KEY`, `MAPBOX_TOKEN`
@@ -130,7 +141,8 @@ provider_marked_complete → customer_confirmed → completed
      `https://<your-app>.onrender.com/api/payments/webhook` (events: `checkout.session.completed`,
      `payment_intent.payment_failed`, `account.updated`, `customer.subscription.*`) and paste its signing secret here.
 4. Redeploy. Migrations run automatically on every deploy (`npm start` runs `npm run migrate` first).
-5. Visit `/health` to confirm the service is up.
+5. Visit `/health` to confirm the service is up. Note: on the Free plan the service spins down after 15
+   minutes of inactivity and takes ~1 minute to wake back up on the next request — this is expected, not an outage.
 
 ## What's real vs. what needs your keys
 
