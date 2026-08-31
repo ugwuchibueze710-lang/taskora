@@ -1,0 +1,15 @@
+{
+  "name": "taskora",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Taskora — a local services marketplace. Root scripts orchestrate the server (Express + PostgreSQL) and client (React + Vite) for local dev and for a single-service Render deployment.",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "migrate": "npm run migrate --prefix server",
+    "seed": "npm run seed --prefix server",
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "start": "npm run migrate --prefix server && npm run start --prefix server"
+  }
+}

@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: taskora
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    disk:
+      name: taskora-uploads
+      mountPath: /opt/render/project/src/server/uploads
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_ORIGIN
+        sync: false # set this to your Render URL (e.g. https://taskora.onrender.com) after the first deploy
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskora-db
+          property: connectionString
+      - key: UPLOAD_DIR
+        value: ./uploads
+      # PUBLIC_UPLOAD_BASE_URL is intentionally left unset: the server then serves
+      # uploaded files as relative /uploads/... paths, which resolve correctly
+      # against whatever domain Render assigns without any extra configuration.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: MAPBOX_TOKEN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRO_PRICE_ID
+        sync: false
+      - key: STRIPE_BOOST_PRICE_ID
+        sync: false
+
+databases:
+  - name: taskora-db
+    plan: starter
+    databaseName: taskora
+    user: taskora
