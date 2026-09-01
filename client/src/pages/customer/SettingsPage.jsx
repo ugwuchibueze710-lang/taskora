@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/client.js';
+import SafeImage from '../../components/SafeImage.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function SettingsPage() {
@@ -46,7 +47,7 @@ export default function SettingsPage() {
         <h2 className="font-medium mb-3">Profile picture</h2>
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full bg-ember-100 overflow-hidden flex items-center justify-center font-display text-ember-600 text-xl">
-            {profile.avatar_url ? <img src={profile.avatar_url} className="h-full w-full object-cover" alt="" /> : user.first_name[0]}
+            <SafeImage src={profile.avatar_url} className="h-full w-full object-cover" fallback={user.first_name[0]} />
           </div>
           <div className="flex gap-2">
             <button onClick={() => fileRef.current.click()} className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5">

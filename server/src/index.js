@@ -5,6 +5,7 @@ import connectPgSimple from 'connect-pg-simple';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { pool } from './lib/db.js';
@@ -118,6 +119,38 @@ app.use((err, req, res, next) => {
   if (err instanceof AppError) {
     return res.status(err.status).json({ error: err.message, code: err.code });
   }
+
+  // An upload that fails multer's own limits (too large, wrong field, too
+  // many files) throws a MulterError — again a client mistake, not a server
+  // failure, so it gets a clean 400 with a message people can act on instead
+  // of a generic "something went wrong" for what's usually just a big photo.
+  if (err instanceof multer.MulterError) {
+    const messages = {
+      LIMIT_FILE_SIZE: 'That file is too large.',
+      LIMIT_FILE_COUNT: 'Too many files.',
+      LIMIT_UNEXPECTED_FILE: 'Unexpected file field.',
+    };
+    return res.status(400).json({ error: messages[err.code] || 'File upload error.', code: 'BAD_REQUEST' });
+  }
+
+  // A malformed request body (invalid JSON) is a client mistake, not a server
+  // failure — express.json() throws a plain SyntaxError for this rather than
+  // our AppError, so it needs its own 400 branch instead of falling through
+  // to the generic 500 below.
+  if (err.type === 'entity.parse.failed' || (err instanceof SyntaxError && err.status === 400)) {
+    return res.status(400).json({ error: 'Malformed request body.', code: 'BAD_REQUEST' });
+  }
+
+  // A route param that isn't a well-formed UUID (or another malformed value
+  // Postgres rejects while binding a query parameter) reaches the database
+  // driver before any of our own validation runs. Without this, a client
+  // typing a bad id into the URL — or simply guessing one — gets a raw 500
+  // instead of a clean "not found"/"bad request", and it looks like a server
+  // failure in monitoring when it's really just bad input.
+  if (err.code === '22P02') {
+    return res.status(400).json({ error: 'Invalid ID format.', code: 'BAD_REQUEST' });
+  }
+
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
 });

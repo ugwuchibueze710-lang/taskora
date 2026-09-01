@@ -1,5 +1,5 @@
 import { query, withTransaction } from '../lib/db.js';
-import { conflict, notFound } from '../lib/errors.js';
+import { conflict, notFound, forbidden } from '../lib/errors.js';
 import { notify } from './notification.service.js';
 
 export const PLATFORM_FEE_RATE = 0.1; // Taskora's 10% platform fee, applied transparently everywhere.
@@ -71,7 +71,6 @@ export async function getJobForUser(jobId, user) {
   const isCustomer = job.customer_id === user.id;
   const isProvider = job.provider_user_id === user.id;
   if (!isCustomer && !isProvider && user.role !== 'admin') {
-    const { forbidden } = await import('../lib/errors.js');
     throw forbidden('You do not have access to this job.');
   }
   return { job, isCustomer, isProvider };

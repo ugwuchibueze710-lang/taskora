@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
 import StarRating from '../../components/StarRating.jsx';
 import Spinner from '../../components/Spinner.jsx';
+import SafeImage from '../../components/SafeImage.jsx';
 import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -73,7 +74,7 @@ export default function ProviderProfilePage() {
       <div className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card">
         <div className="flex gap-5">
           <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-3xl font-display text-ember-600">
-            {provider.image_url ? <img src={provider.image_url} className="h-full w-full object-cover" alt="" /> : provider.first_name[0]}
+            <SafeImage src={provider.image_url} className="h-full w-full object-cover" fallback={provider.first_name[0]} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +134,13 @@ export default function ProviderProfilePage() {
           <h2 className="font-display text-xl mb-2">Recent work</h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {photos.map((p) => (
-              <img key={p.id} src={p.url} alt={p.caption || ''} className="aspect-square rounded-xl object-cover" />
+              <SafeImage
+                key={p.id}
+                src={p.url}
+                alt={p.caption || ''}
+                className="aspect-square rounded-xl object-cover"
+                fallback={<div className="aspect-square rounded-xl bg-ink-900/5 flex items-center justify-center text-ink-700/30 text-xl">🖼️</div>}
+              />
             ))}
           </div>
         </div>

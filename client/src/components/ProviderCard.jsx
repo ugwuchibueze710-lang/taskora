@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import StarRating from './StarRating.jsx';
+import SafeImage from './SafeImage.jsx';
 
 export default function ProviderCard({ provider }) {
   return (
@@ -8,11 +9,7 @@ export default function ProviderCard({ provider }) {
       className="flex gap-4 rounded-2xl border border-ink-900/8 bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:shadow-pop"
     >
       <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-ember-100 flex items-center justify-center text-2xl font-display text-ember-600">
-        {provider.imageUrl ? (
-          <img src={provider.imageUrl} alt={provider.name} className="h-full w-full object-cover" />
-        ) : (
-          provider.name?.[0] || '?'
-        )}
+        <SafeImage src={provider.imageUrl} alt={provider.name} className="h-full w-full object-cover" fallback={provider.name?.[0] || '?'} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

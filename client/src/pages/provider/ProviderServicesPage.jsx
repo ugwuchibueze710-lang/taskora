@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../api/client.js';
 import CategoryPicker from '../../components/CategoryPicker.jsx';
 import Spinner from '../../components/Spinner.jsx';
+import SafeImage from '../../components/SafeImage.jsx';
 
 export default function ProviderServicesPage() {
   const [me, setMe] = useState(null);
@@ -108,7 +109,7 @@ export default function ProviderServicesPage() {
         <h2 className="font-medium mb-3">Profile photo / company logo</h2>
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-xl font-display text-ember-600">
-            {me.provider.image_url ? <img src={me.provider.image_url} className="h-full w-full object-cover" alt="" /> : '?'}
+            <SafeImage src={me.provider.image_url} className="h-full w-full object-cover" fallback="?" />
           </div>
           <div className="flex flex-wrap gap-2">
             <label className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5 cursor-pointer">
@@ -166,7 +167,11 @@ export default function ProviderServicesPage() {
         <div className="grid grid-cols-4 gap-2 mt-3">
           {me.photos.map((p) => (
             <div key={p.id} className="relative group">
-              <img src={p.url} className="aspect-square rounded-lg object-cover" alt="" />
+              <SafeImage
+                src={p.url}
+                className="aspect-square rounded-lg object-cover"
+                fallback={<div className="aspect-square rounded-lg bg-ink-900/5 flex items-center justify-center text-ink-700/30 text-lg">🖼️</div>}
+              />
               <button onClick={() => deletePhoto(p.id)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100">✕</button>
             </div>
           ))}
