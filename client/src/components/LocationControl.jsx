@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation as useTaskoraLocation } from '../context/LocationContext.jsx';
 
 export default function LocationControl() {
-  const { locked, location, lock, unlock, searchPlaces } = useTaskoraLocation();
+  const { locked, location, lock, unlock, searchPlaces, detectMyLocation } = useTaskoraLocation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [justLocked, setJustLocked] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState('');
   const boxRef = useRef(null);
 
   useEffect(() => {
@@ -43,6 +45,22 @@ export default function LocationControl() {
     setOpen(true);
   };
 
+  const handleUseMyLocation = async () => {
+    setLocateError('');
+    setLocating(true);
+    try {
+      await detectMyLocation();
+      setOpen(false);
+      setQuery('');
+      setJustLocked(true);
+      setTimeout(() => setJustLocked(false), 450);
+    } catch (err) {
+      setLocateError(err.message);
+    } finally {
+      setLocating(false);
+    }
+  };
+
   return (
     <div className="relative" ref={boxRef}>
       <button
@@ -56,6 +74,17 @@ export default function LocationControl() {
 
       {open && !locked && (
         <div className="absolute z-30 mt-2 w-72 rounded-xl border border-ink-900/10 bg-white p-2 shadow-pop animate-slideDown">
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={locating}
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ember-600 hover:bg-ember-50 disabled:opacity-60"
+          >
+            <span>{locating ? '⏳' : '🧭'}</span>
+            {locating ? 'Finding your location…' : 'Use my current location'}
+          </button>
+          {locateError && <p className="mb-1 px-3 text-xs text-red-600">{locateError}</p>}
+          <div className="mb-1 border-t border-ink-900/8" />
           <input
             autoFocus
             value={query}

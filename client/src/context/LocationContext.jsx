@@ -31,8 +31,43 @@ export function LocationProvider({ children }) {
 
   const unlock = () => setLocked(false);
 
+  // "Use my current location" — asks the browser for GPS/network location,
+  // turns the raw coordinates into a human label via the server's reverse
+  // geocoder, then locks it exactly like a manually-searched result would.
+  // Rejects with a short, user-facing message on every failure path so the
+  // UI can show it directly instead of a generic error.
+  const detectMyLocation = () =>
+    new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) {
+        reject(new Error('Your browser doesn\'t support location detection. Search instead.'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude: lat, longitude: lng } = position.coords;
+            const { data } = await api.get('/location/reverse', { params: { lat, lng } });
+            await lock(data.location);
+            resolve(data.location);
+          } catch (err) {
+            reject(err);
+          }
+        },
+        (geoError) => {
+          if (geoError.code === geoError.PERMISSION_DENIED) {
+            reject(new Error('Location permission was denied. Search for your city or ZIP instead.'));
+          } else if (geoError.code === geoError.TIMEOUT) {
+            reject(new Error('Timed out getting your location. Try again or search instead.'));
+          } else {
+            reject(new Error('Couldn\'t detect your location. Try again or search instead.'));
+          }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 }
+      );
+    });
+
   return (
-    <LocationContext.Provider value={{ locked, location, lock, unlock, searchPlaces }}>
+    <LocationContext.Provider value={{ locked, location, lock, unlock, searchPlaces, detectMyLocation }}>
       {children}
     </LocationContext.Provider>
   );

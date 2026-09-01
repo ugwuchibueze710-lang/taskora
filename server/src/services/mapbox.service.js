@@ -36,6 +36,35 @@ export async function geocode(placeText, { limit = 5, proximity = null } = {}) {
   }));
 }
 
+/**
+ * Reverse-geocode a coordinate pair into a human-readable place label.
+ * Used by "use my current location" — the browser gives us raw lat/lng via
+ * the Geolocation API, and we need a label to show/store alongside it (the
+ * same way a manually-searched result carries one).
+ */
+export async function reverseGeocode(lat, lng) {
+  const token = process.env.MAPBOX_TOKEN;
+  if (!token) {
+    throw badRequest('Location search is not configured yet (missing Mapbox token).');
+  }
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+    throw badRequest('A valid lat/lng is required.');
+  }
+
+  const url = new URL(`${MAPBOX_BASE}/${lng},${lat}.json`);
+  url.searchParams.set('access_token', token);
+  url.searchParams.set('types', 'place,postcode,locality,neighborhood,address,region');
+  url.searchParams.set('limit', '1');
+
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Mapbox reverse geocoding failed with status ${resp.status}`);
+  }
+  const data = await resp.json();
+  const best = (data.features || [])[0];
+  return { label: best ? best.place_name : `${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng };
+}
+
 /** Great-circle distance in miles between two lat/lng points. */
 export function distanceMiles(lat1, lng1, lat2, lng2) {
   if ([lat1, lng1, lat2, lng2].some((v) => v == null)) return null;
