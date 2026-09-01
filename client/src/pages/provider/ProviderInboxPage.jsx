@@ -8,7 +8,10 @@ export default function ProviderInboxPage() {
   const [conversations, setConversations] = useState(null);
 
   useEffect(() => {
-    api.get('/messages/conversations').then(({ data }) => setConversations(data.conversations));
+    const load = () => api.get('/messages/conversations').then(({ data }) => setConversations(data.conversations));
+    load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!conversations) return <div className="flex justify-center py-16"><Spinner size={28} /></div>;

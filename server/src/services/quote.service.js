@@ -13,7 +13,7 @@ export async function createQuoteRequest({ customerId, providerId, serviceId = n
   if (provider.user_id === customerId) throw badRequest('You cannot request a quote from your own provider profile.');
 
   return withTransaction(async (client) => {
-    const conv = await getOrCreateConversation(customerId, providerId);
+    const conv = await getOrCreateConversation(customerId, providerId, client);
     const { rows } = await client.query(
       `INSERT INTO quote_requests (conversation_id, customer_id, provider_id, service_id, message)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -30,7 +30,8 @@ export async function createQuoteRequest({ customerId, providerId, serviceId = n
       type: 'quote_request',
       title: 'New quote request',
       body: message?.slice(0, 140) || 'A customer requested a quote.',
-      data: { quoteRequestId: qr.id },
+      data: { quoteRequestId: qr.id, conversationId: conv.id },
+      client,
     });
     return qr;
   });
@@ -67,7 +68,8 @@ export async function sendQuote({ quoteRequestId, providerId, price, description
       type: 'quote_received',
       title: 'You received a quote',
       body: `A provider sent you a quote for $${price}.`,
-      data: { quoteId: quote.id },
+      data: { quoteId: quote.id, conversationId: qr.conversation_id },
+      client,
     });
     return quote;
   });
@@ -119,6 +121,7 @@ export async function acceptQuote({ quoteId, customerId }) {
       title: 'Your quote was accepted!',
       body: `The customer accepted your $${quote.price} quote. Next: they'll pay to confirm the job.`,
       data: { jobId: job.id },
+      client,
     });
 
     return job;

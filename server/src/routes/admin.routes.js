@@ -268,12 +268,14 @@ router.post(
       type: 'dispute_resolved',
       title: 'Your dispute has been resolved',
       body: notes || `Resolution: ${resolution.replace('resolved_', '')}`,
+      data: { jobId: dispute.job_id },
     });
     if (dispute.against_user_id) {
       await notify(dispute.against_user_id, {
         type: 'dispute_resolved',
         title: 'A dispute involving you was resolved',
         body: notes || `Resolution: ${resolution.replace('resolved_', '')}`,
+        data: { jobId: dispute.job_id },
       });
     }
 

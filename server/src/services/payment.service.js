@@ -153,12 +153,14 @@ export async function handleCheckoutCompleted(session) {
       title: 'Payment confirmed',
       body: `Your payment of $${payment.amount_total} was received. Waiting on your provider to accept the job.`,
       data: { jobId: job.id },
+      client,
     });
     await notify(job.provider_user_id, {
       type: 'job_request',
       title: 'New job request',
       body: `A customer paid for a job: $${payment.provider_amount} after Taskora's fee.`,
       data: { jobId: job.id },
+      client,
     });
   });
 }

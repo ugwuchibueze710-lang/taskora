@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { notificationRoute } from '../lib/notificationRoute.js';
 
 export default function NotificationBell() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -37,6 +41,15 @@ export default function NotificationBell() {
     load();
   };
 
+  const handleClick = async (n) => {
+    if (!n.read_at) {
+      api.post(`/notifications/${n.id}/read`).then(load).catch(() => {});
+    }
+    const path = notificationRoute(n, user?.current_mode);
+    setOpen(false);
+    if (path) navigate(path);
+  };
+
   return (
     <div className="relative" ref={boxRef}>
       <button onClick={() => setOpen((o) => !o)} className="relative rounded-full p-2 hover:bg-ink-900/5">
@@ -60,11 +73,15 @@ export default function NotificationBell() {
           <div className="max-h-96 overflow-y-auto scrollbar-thin">
             {items.length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-700/60">You're all caught up.</p>}
             {items.map((n) => (
-              <div key={n.id} className={`px-4 py-3 text-sm border-b border-ink-900/5 last:border-0 ${!n.read_at ? 'bg-ember-50/60' : ''}`}>
+              <button
+                key={n.id}
+                onClick={() => handleClick(n)}
+                className={`block w-full px-4 py-3 text-left text-sm border-b border-ink-900/5 last:border-0 hover:bg-ink-900/5 ${!n.read_at ? 'bg-ember-50/60' : ''}`}
+              >
                 <p className="font-medium text-ink-900">{n.title}</p>
                 {n.body && <p className="text-ink-700/70 mt-0.5">{n.body}</p>}
                 <p className="text-[11px] text-ink-700/40 mt-1">{new Date(n.created_at).toLocaleString()}</p>
-              </div>
+              </button>
             ))}
           </div>
           <Link to="/notifications" onClick={() => setOpen(false)} className="block text-center text-xs text-ember-600 py-2 hover:underline">

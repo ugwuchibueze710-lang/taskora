@@ -2,14 +2,20 @@ import { query, withTransaction } from '../lib/db.js';
 import { notFound, forbidden } from '../lib/errors.js';
 import { notify } from './notification.service.js';
 
-/** Finds or creates the single conversation between a customer and a provider. */
-export async function getOrCreateConversation(customerId, providerId) {
-  const existing = await query('SELECT * FROM conversations WHERE customer_id = $1 AND provider_id = $2', [
+/**
+ * Finds or creates the single conversation between a customer and a provider.
+ * Pass `client` when calling from inside a withTransaction() block so this
+ * participates in that transaction instead of auto-committing independently
+ * on its own pooled connection.
+ */
+export async function getOrCreateConversation(customerId, providerId, client = null) {
+  const runner = client ? (text, params) => client.query(text, params) : query;
+  const existing = await runner('SELECT * FROM conversations WHERE customer_id = $1 AND provider_id = $2', [
     customerId,
     providerId,
   ]);
   if (existing.rows[0]) return existing.rows[0];
-  const { rows } = await query(
+  const { rows } = await runner(
     'INSERT INTO conversations (customer_id, provider_id) VALUES ($1, $2) RETURNING *',
     [customerId, providerId]
   );
@@ -67,6 +73,7 @@ export async function sendMessage({ conversationId, senderUserId, senderRole = '
         title: 'New message',
         body: body?.slice(0, 140) || 'You have a new message.',
         data: { conversationId },
+        client,
       });
 
       if (conv.auto_reply_enabled && conv.auto_reply_message && type !== 'auto_reply') {
@@ -89,6 +96,7 @@ export async function sendMessage({ conversationId, senderUserId, senderRole = '
         title: 'New message from your provider',
         body: body?.slice(0, 140) || 'You have a new message.',
         data: { conversationId },
+        client,
       });
     }
 
