@@ -41,27 +41,27 @@ export const CATEGORY_GROUPS = [
 export const CATEGORIES = [
   // ---- Home Services -------------------------------------------------
   cat('handyman', 'Handyman', 'home-services', 'General home repairs and small fix-it jobs.', ['handy man', 'odd jobs', 'general repairs', 'fix it']),
-  cat('plumbing', 'Plumbing', 'home-services', 'Leaks, drains, fixtures, and water heater service.', ['plumber', 'leak repair', 'drain cleaning', 'pipe repair', 'water heater']),
-  cat('electrician', 'Electrician', 'home-services', 'Wiring, outlets, panels, and lighting installation.', ['electrical', 'electrical repair', 'outlet installation', 'panel upgrade', 'wiring']),
+  catImg('plumbing', 'Plumbing', 'home-services', 'Leaks, drains, fixtures, and water heater service.', ['plumber', 'leak repair', 'drain cleaning', 'pipe repair', 'water heater'], 'plumbing'),
+  catImg('electrician', 'Electrician', 'home-services', 'Wiring, outlets, panels, and lighting installation.', ['electrical', 'electrical repair', 'outlet installation', 'panel upgrade', 'wiring'], 'electrician'),
   cat('hvac', 'HVAC', 'home-services', 'Heating, ventilation, and air conditioning service.', ['air conditioning', 'ac repair', 'furnace repair', 'heating repair', 'hvac repair']),
   cat('appliance-repair', 'Appliance Repair', 'home-services', 'Repair for major home appliances.', ['fridge repair', 'washer repair', 'dryer repair', 'dishwasher repair', 'oven repair']),
-  cat('home-cleaning', 'House Cleaning', 'home-services', 'Standard residential cleaning.', ['house cleaner', 'maid service', 'cleaning service', 'home cleaner']),
+  catImg('home-cleaning', 'House Cleaning', 'home-services', 'Standard residential cleaning.', ['house cleaner', 'maid service', 'cleaning service', 'home cleaner'], 'house-cleaning'),
   cat('deep-cleaning', 'Deep Cleaning', 'home-services', 'Intensive top-to-bottom cleaning.', ['deep clean', 'move-out cleaning', 'move-in cleaning', 'spring cleaning']),
   cat('carpet-cleaning', 'Carpet Cleaning', 'home-services', 'Carpet and rug steam or shampoo cleaning.', ['rug cleaning', 'carpet shampoo', 'steam cleaning']),
   cat('window-cleaning', 'Window Cleaning', 'home-services', 'Interior and exterior window washing.', ['window washing', 'glass cleaning']),
   cat('pressure-washing', 'Pressure Washing', 'home-services', 'Exterior surface and driveway pressure washing.', ['power washing', 'driveway cleaning', 'house washing']),
-  cat('house-painting', 'House Painting', 'home-services', 'Full-house interior or exterior painting.', ['painter', 'painting service']),
+  catImg('house-painting', 'House Painting', 'home-services', 'Full-house interior or exterior painting.', ['painter', 'painting service'], 'house-painting'),
   cat('interior-painting', 'Interior Painting', 'home-services', 'Painting for interior rooms and trim.', ['room painting', 'wall painting']),
   cat('exterior-painting', 'Exterior Painting', 'home-services', 'Painting for siding, trim, and exteriors.', ['exterior painter']),
   cat('drywall-repair', 'Drywall Repair', 'home-services', 'Patching holes, cracks, and drywall damage.', ['sheetrock repair', 'wall patch', 'hole repair']),
   cat('flooring', 'Flooring', 'home-services', 'Flooring installation and repair.', ['floor installation', 'hardwood flooring', 'laminate flooring']),
   cat('tile-installation', 'Tile Installation', 'home-services', 'Tile installation and repair.', ['tiling', 'backsplash installation']),
-  cat('roofing', 'Roofing', 'home-services', 'Roof repair, replacement, and inspection.', ['roofer', 'roof repair', 'roof leak', 'shingle repair']),
+  catImg('roofing', 'Roofing', 'home-services', 'Roof repair, replacement, and inspection.', ['roofer', 'roof repair', 'roof leak', 'shingle repair'], 'roofing'),
   cat('gutter-cleaning', 'Gutter Cleaning', 'home-services', 'Gutter cleaning and minor repair.', ['gutter service', 'downspout cleaning']),
   cat('siding', 'Siding', 'home-services', 'Siding installation and repair.', ['vinyl siding', 'siding repair']),
   cat('door-installation', 'Door Installation', 'home-services', 'Interior and exterior door installation.', ['door repair', 'door replacement']),
   cat('window-installation', 'Window Installation', 'home-services', 'Window installation and replacement.', ['window replacement']),
-  cat('locksmith', 'Locksmith', 'home-services', 'Lock repair, rekeying, and lockout service.', ['lock repair', 'key service', 'locked out', 'door lock', 'rekey', 'lockout']),
+  catImg('locksmith', 'Locksmith', 'home-services', 'Lock repair, rekeying, and lockout service.', ['lock repair', 'key service', 'locked out', 'door lock', 'rekey', 'lockout'], 'locksmith'),
   cat('pest-control', 'Pest Control', 'home-services', 'Extermination and pest prevention.', ['exterminator', 'bug spray', 'termite control', 'rodent control']),
   cat('home-security', 'Home Security', 'home-services', 'Security system installation and setup.', ['alarm installation', 'security camera install']),
   cat('smart-home-installation', 'Smart Home Installation', 'home-services', 'Smart device and automation setup.', ['smart home setup', 'home automation']),
@@ -75,7 +75,7 @@ export const CATEGORIES = [
   // ---- Yard & Outdoor --------------------------------------------------
   cat('lawn-mowing', 'Lawn Mowing', 'yard-outdoor', 'Regular lawn mowing service.', ['mow my lawn', 'grass cutting']),
   cat('lawn-care', 'Lawn Care', 'yard-outdoor', 'Fertilizing, weed control, and lawn treatment.', ['fertilizing', 'weed control', 'lawn treatment']),
-  cat('landscaping', 'Landscaping', 'yard-outdoor', 'Landscape design and installation.', ['landscaper', 'yard design']),
+  catImg('landscaping', 'Landscaping', 'yard-outdoor', 'Landscape design and installation.', ['landscaper', 'yard design'], 'landscaping'),
   cat('gardening', 'Gardening', 'yard-outdoor', 'Garden planting and maintenance.', ['gardener', 'garden maintenance']),
   cat('tree-trimming', 'Tree Trimming', 'yard-outdoor', 'Trimming and pruning trees.', ['tree pruning', 'tree service']),
   cat('tree-removal', 'Tree Removal', 'yard-outdoor', 'Removing trees and stumps.', ['stump removal', 'tree cutting']),
@@ -92,7 +92,7 @@ export const CATEGORIES = [
 
   // ---- Automotive -------------------------------------------------------
   cat('mobile-mechanic', 'Mobile Mechanic', 'automotive', 'Auto repair that comes to you.', ['mobile auto repair']),
-  cat('auto-repair', 'Auto Repair', 'automotive', 'General vehicle repair.', ['car repair', 'mechanic']),
+  catImg('auto-repair', 'Auto Repair', 'automotive', 'General vehicle repair.', ['car repair', 'mechanic'], 'auto-repair'),
   cat('oil-change', 'Oil Change', 'automotive', 'Mobile or shop oil changes.', ['oil change service']),
   cat('brake-repair', 'Brake Repair', 'automotive', 'Brake pad, rotor, and line repair.', ['brake service', 'brake pads']),
   cat('tire-service', 'Tire Service', 'automotive', 'Tire repair and rotation.', ['flat tire repair', 'tire rotation']),
@@ -109,7 +109,7 @@ export const CATEGORIES = [
   // ---- Delivery & Errands -------------------------------------------
   cat('grocery-pickup', 'Grocery Pickup', 'delivery-errands', 'Someone picks up your groceries for you.', ['grocery shopping', 'grocery run']),
   cat('grocery-delivery', 'Grocery Delivery', 'delivery-errands', 'Groceries picked up and delivered.', ['grocery delivery service']),
-  cat('food-delivery', 'Food Delivery', 'delivery-errands', 'Restaurant food pickup and delivery.', ['food runner']),
+  catImg('food-delivery', 'Food Delivery', 'delivery-errands', 'Restaurant food pickup and delivery.', ['food runner'], 'food-delivery'),
   cat('package-pickup', 'Package Pickup', 'delivery-errands', 'Picking up packages on your behalf.', []),
   cat('package-delivery', 'Package Delivery', 'delivery-errands', 'Delivering packages locally.', ['parcel delivery']),
   cat('courier', 'Courier', 'delivery-errands', 'General local courier service.', ['courier service']),
@@ -122,7 +122,7 @@ export const CATEGORIES = [
   cat('local-delivery', 'Local Delivery', 'delivery-errands', 'General local delivery service.', []),
 
   // ---- Personal Assistance -------------------------------------------
-  cat('personal-assistant', 'Personal Assistant', 'personal-assistance', 'In-person help with day-to-day tasks.', ['personal aide']),
+  catImg('personal-assistant', 'Personal Assistant', 'personal-assistance', 'In-person help with day-to-day tasks.', ['personal aide'], 'personal-assistant'),
   cat('virtual-assistant', 'Virtual Assistant', 'personal-assistance', 'Remote administrative and task support.', ['remote assistant']),
   cat('errand-assistant', 'Errand Assistant', 'personal-assistance', 'Ongoing help running errands.', []),
   cat('event-assistant', 'Event Assistant', 'personal-assistance', 'Extra hands for planning or running events.', []),
@@ -133,7 +133,7 @@ export const CATEGORIES = [
   cat('scheduling-assistant', 'Scheduling Assistant', 'personal-assistance', 'Calendar and appointment scheduling help.', []),
 
   // ---- Technology -------------------------------------------------------
-  cat('computer-repair', 'Computer Repair', 'technology', 'Diagnosing and repairing computers.', ['pc repair', 'laptop repair']),
+  catImg('computer-repair', 'Computer Repair', 'technology', 'Diagnosing and repairing computers.', ['pc repair', 'laptop repair'], 'computer-repair'),
   cat('phone-repair', 'Phone Repair', 'technology', 'Cell phone screen and hardware repair.', ['cell phone repair', 'screen repair']),
   cat('tablet-repair', 'Tablet Repair', 'technology', 'Tablet screen and hardware repair.', ['ipad repair']),
   cat('wifi-setup', 'Wi-Fi Setup', 'technology', 'Home network and Wi-Fi setup.', ['wifi installation', 'router setup']),
@@ -147,7 +147,7 @@ export const CATEGORIES = [
   cat('device-setup', 'Device Setup', 'technology', 'General new-device setup help.', ['new device setup']),
 
   // ---- Beauty & Personal Care -----------------------------------------
-  cat('haircut', 'Haircut', 'beauty-personal-care', 'Haircuts at home or on location.', ['hair cut']),
+  catImg('haircut', 'Haircut', 'beauty-personal-care', 'Haircuts at home or on location.', ['hair cut'], 'haircut'),
   cat('hairstylist', 'Hairstylist', 'beauty-personal-care', 'Hair styling services.', ['hair stylist', 'hairdresser']),
   cat('barber', 'Barber', 'beauty-personal-care', 'Barber services.', []),
   cat('makeup-artist', 'Makeup Artist', 'beauty-personal-care', 'Makeup application for events or photos.', ['makeup']),
@@ -161,7 +161,7 @@ export const CATEGORIES = [
   cat('wedding-planning', 'Wedding Planning', 'events', 'Wedding planning and coordination.', ['wedding planner']),
   cat('party-planning', 'Party Planning', 'events', 'Planning parties and celebrations.', ['party planner']),
   cat('dj', 'DJ', 'events', 'DJ services for events.', ['disc jockey']),
-  cat('photographer', 'Photographer', 'events', 'Event and portrait photography.', ['photography']),
+  catImg('photographer', 'Photographer', 'events', 'Event and portrait photography.', ['photography'], 'photographer'),
   cat('videographer', 'Videographer', 'events', 'Event videography.', ['videography']),
   cat('photo-booth', 'Photo Booth', 'events', 'Photo booth rental for events.', []),
   cat('catering', 'Catering', 'events', 'Food catering for events.', ['caterer']),
@@ -177,14 +177,14 @@ export const CATEGORIES = [
   cat('pet-sitting', 'Pet Sitting', 'pets', 'Watching pets while you’re away.', ['pet sitter']),
   cat('dog-sitting', 'Dog Sitting', 'pets', 'Dog sitting and boarding.', []),
   cat('cat-sitting', 'Cat Sitting', 'pets', 'Cat sitting and drop-in visits.', []),
-  cat('pet-grooming', 'Pet Grooming', 'pets', 'Grooming for pets.', ['groomer']),
+  catImg('pet-grooming', 'Pet Grooming', 'pets', 'Grooming for pets.', ['groomer'], 'pet-grooming'),
   cat('dog-grooming', 'Dog Grooming', 'pets', 'Grooming specifically for dogs.', []),
   cat('pet-transportation', 'Pet Transportation', 'pets', 'Transporting pets to appointments.', []),
   cat('pet-waste-removal', 'Pet Waste Removal', 'pets', 'Yard waste cleanup for pet owners.', ['poop scooping']),
   cat('pet-training', 'Pet Training', 'pets', 'Obedience and behavior training.', ['dog training']),
 
   // ---- Child & Family Services ----------------------------------------
-  cat('babysitting', 'Babysitting', 'family', 'In-home babysitting.', ['babysitter']),
+  catImg('babysitting', 'Babysitting', 'family', 'In-home babysitting.', ['babysitter'], 'babysitting'),
   cat('childcare', 'Childcare', 'family', 'Regular childcare services.', ['child care']),
   cat('tutoring', 'Tutoring', 'family', 'Academic tutoring.', ['tutor']),
   cat('homework-help', 'Homework Help', 'family', 'Help with schoolwork.', []),
@@ -193,7 +193,7 @@ export const CATEGORIES = [
   cat('family-assistance', 'Family Assistance', 'family', 'General family support services.', []),
 
   // ---- Elder & Assistance Services -------------------------------------
-  cat('companion-services', 'Companion Services', 'senior-care', 'Companionship and check-in visits.', ['companion care']),
+  catImg('companion-services', 'Companion Services', 'senior-care', 'Companionship and check-in visits.', ['companion care'], 'companion-services'),
   cat('elder-errand-assistance', 'Errand Assistance', 'senior-care', 'Errand help for elderly clients.', []),
   cat('grocery-assistance', 'Grocery Assistance', 'senior-care', 'Help with grocery shopping.', []),
   cat('transportation-assistance', 'Transportation Assistance', 'senior-care', 'Rides to appointments and errands.', ['ride assistance']),
@@ -201,7 +201,7 @@ export const CATEGORIES = [
   cat('appointment-assistance', 'Appointment Assistance', 'senior-care', 'Help getting to and from appointments.', []),
 
   // ---- Business Services ---------------------------------------------
-  cat('office-cleaning', 'Office Cleaning', 'business', 'Cleaning for office spaces.', []),
+  catImg('office-cleaning', 'Office Cleaning', 'business', 'Cleaning for office spaces.', [], 'office-cleaning'),
   cat('commercial-cleaning', 'Commercial Cleaning', 'business', 'Cleaning for commercial properties.', []),
   cat('data-entry', 'Data Entry', 'business', 'Data entry support.', []),
   cat('bookkeeping', 'Bookkeeping', 'business', 'Bookkeeping and basic accounting support.', ['bookkeeper']),
@@ -215,7 +215,7 @@ export const CATEGORIES = [
 
   // ---- Moving & Transportation ------------------------------------------
   cat('moving-labor', 'Moving Labor', 'moving-transport', 'Labor-only help for a move.', []),
-  cat('furniture-moving', 'Furniture Moving', 'moving-transport', 'Moving furniture within or between homes.', []),
+  catImg('furniture-moving', 'Furniture Moving', 'moving-transport', 'Moving furniture within or between homes.', [], 'furniture-moving'),
   cat('loading-unloading', 'Loading/Unloading', 'moving-transport', 'Loading and unloading moving trucks.', []),
   cat('packing', 'Packing', 'moving-transport', 'Packing items for a move.', []),
   cat('unpacking', 'Unpacking', 'moving-transport', 'Unpacking after a move.', []),
@@ -235,10 +235,19 @@ export const CATEGORIES = [
   cat('assembly', 'Assembly', 'other', 'General assembly service.', []),
   cat('organization', 'Organization', 'other', 'General organizing service.', []),
   cat('general-cleaning', 'Cleaning', 'other', 'General cleaning service.', []),
-  cat('general-labor', 'General Labor', 'other', 'General manual labor help.', []),
+  catImg('general-labor', 'General Labor', 'other', 'General manual labor help.', [], 'general-labor'),
   cat('other-services', 'Other Services', 'other', 'Anything that doesn’t fit an existing category yet.', ['custom service', 'misc', 'other']),
 ];
 
 function cat(id, name, group, description, keywords) {
   return { id, name, group, description, keywords, image: null };
+}
+
+// Same as cat(), but with a real downloaded photo (from
+// client/public/images/categories/<imageSlug>.jpg) wired in as the
+// category's image. These are sourced from Unsplash (free license, no
+// attribution required) via the live site — never AI-generated, never a
+// placeholder, never gated behind an API key.
+function catImg(id, name, group, description, keywords, imageSlug) {
+  return { id, name, group, description, keywords, image: `/images/categories/${imageSlug}.jpg` };
 }
