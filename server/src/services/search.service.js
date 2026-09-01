@@ -19,7 +19,14 @@ export async function searchProviders(filters = {}) {
     `SELECT p.*, u.first_name, u.last_name,
         COALESCE(array_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '{}') AS category_names,
         COALESCE(array_agg(DISTINCT c.id) FILTER (WHERE c.id IS NOT NULL), '{}') AS category_ids,
-        COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') AS service_names
+        COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') AS service_names,
+        COALESCE(
+          (SELECT array_agg(DISTINCT kw) FROM categories c2
+             JOIN provider_categories pc2 ON pc2.category_id = c2.id
+             CROSS JOIN LATERAL unnest(c2.keywords) AS kw
+            WHERE pc2.provider_id = p.id),
+          '{}'
+        ) AS category_keywords
       FROM providers p
       JOIN users u ON u.id = p.user_id
       LEFT JOIN provider_categories pc ON pc.provider_id = p.id
@@ -52,6 +59,7 @@ export async function searchProviders(filters = {}) {
       p.description,
       ...(p.category_names || []),
       ...(p.service_names || []),
+      ...(p.category_keywords || []),
     ]
       .filter(Boolean)
       .join(' ')

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client.js';
+import CategoryPicker from '../../components/CategoryPicker.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
 export default function ProviderServicesPage() {
   const [me, setMe] = useState(null);
-  const [categories, setCategories] = useState([]);
   const [servicesByCategory, setServicesByCategory] = useState({});
   const [saved, setSaved] = useState('');
 
   const load = async () => {
-    const [{ data: m }, { data: c }] = await Promise.all([api.get('/providers/me'), api.get('/categories')]);
+    const { data: m } = await api.get('/providers/me');
     setMe(m);
-    setCategories(c.categories);
   };
   useEffect(() => { load(); }, []);
 
@@ -28,8 +27,8 @@ export default function ProviderServicesPage() {
 
   const flash = () => { setSaved('Saved!'); setTimeout(() => setSaved(''), 1500); };
 
-  const toggleCategory = async (id) => {
-    const ids = me.categories.some((c) => c.id === id) ? me.categories.filter((c) => c.id !== id).map((c) => c.id) : [...me.categories.map((c) => c.id), id];
+  const saveCategoryIds = async (ids) => {
+    if (!ids.length) return; // the server requires at least one category — the picker just won't persist an empty set
     await api.put('/providers/me/categories', { categoryIds: ids });
     await load();
     flash();
@@ -70,6 +69,28 @@ export default function ProviderServicesPage() {
     await load();
   };
 
+  const uploadProfileImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('image', file);
+    form.append('source', 'custom');
+    await api.post('/providers/me/image', form);
+    await load();
+    flash();
+  };
+
+  const uploadLogo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('image', file);
+    form.append('source', 'logo');
+    await api.post('/providers/me/image', form);
+    await load();
+    flash();
+  };
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
@@ -78,14 +99,27 @@ export default function ProviderServicesPage() {
       </div>
 
       <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
-        <h2 className="font-medium mb-2">Categories</h2>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((c) => (
-            <button key={c.id} onClick={() => toggleCategory(c.id)}
-              className={`rounded-full border px-3 py-1.5 text-sm ${me.categories.some((x) => x.id === c.id) ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
-              {c.icon} {c.name}
-            </button>
-          ))}
+        <h2 className="font-medium mb-2">Services you offer</h2>
+        <p className="text-sm text-ink-700/60 mb-2">Add or remove as many services as you genuinely offer — there's no limit.</p>
+        <CategoryPicker selectedIds={me.categories.map((c) => c.id)} onChange={saveCategoryIds} />
+      </section>
+
+      <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+        <h2 className="font-medium mb-3">Profile photo / company logo</h2>
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-xl font-display text-ember-600">
+            {me.provider.image_url ? <img src={me.provider.image_url} className="h-full w-full object-cover" alt="" /> : '?'}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5 cursor-pointer">
+              Upload photo
+              <input type="file" accept="image/*" hidden onChange={uploadProfileImage} />
+            </label>
+            <label className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5 cursor-pointer">
+              Upload company logo
+              <input type="file" accept="image/*" hidden onChange={uploadLogo} />
+            </label>
+          </div>
         </div>
       </section>
 

@@ -63,9 +63,9 @@ export default function SearchResultsPage() {
           {interpreted.budgetMax && ` · under $${interpreted.budgetMax}`}
         </p>
       )}
-      {!location && !categoryId && (
+      {!location && (
         <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Set your location for distance-aware results — otherwise we'll match on relevance only.
+          Set your location (top of the page) so we only show providers who actually serve your area — without it, results aren't filtered by distance.
         </p>
       )}
 

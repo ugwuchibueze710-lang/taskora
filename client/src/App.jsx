@@ -7,6 +7,7 @@ import SignupPage from './pages/auth/SignupPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 
 import HomePage from './pages/customer/HomePage.jsx';
+import CategoryDirectoryPage from './pages/customer/CategoryDirectoryPage.jsx';
 import SearchResultsPage from './pages/customer/SearchResultsPage.jsx';
 import ProviderProfilePage from './pages/customer/ProviderProfilePage.jsx';
 import MessagesPage from './pages/customer/MessagesPage.jsx';
@@ -40,6 +41,7 @@ export default function App() {
 
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/services" element={<CategoryDirectoryPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
         <Route path="/providers/:id" element={<ProviderProfilePage />} />
         <Route path="/messages" element={<MessagesPage />} />

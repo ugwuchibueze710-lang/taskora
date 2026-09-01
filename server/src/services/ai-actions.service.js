@@ -8,6 +8,7 @@
 import { query } from '../lib/db.js';
 import { searchProviders } from './search.service.js';
 import { geocode } from './mapbox.service.js';
+import { resolveCategoryByText, searchCategories } from './category.service.js';
 import { getOrCreateConversation, sendMessage, loadConversationForUser } from './message.service.js';
 import * as QuoteService from './quote.service.js';
 import { getJobForUser } from './job.service.js';
@@ -81,11 +82,8 @@ export async function executeTool(name, args, req) {
       return searchProviders(filters);
     }
     case 'search_categories': {
-      const { rows } = await query(
-        `SELECT id, name, slug FROM categories WHERE is_active = true AND name ILIKE $1 ORDER BY sort_order LIMIT 10`,
-        [`%${args.text || ''}%`]
-      );
-      return { categories: rows };
+      const rows = await searchCategories(args.text, { limit: 10 });
+      return { categories: rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })) };
     }
     case 'get_provider_profile': {
       const { rows } = await query(
@@ -176,10 +174,8 @@ function requireUser(req) {
 async function resolveFilters(args, req) {
   const filters = { keywords: args.keywords || [], budgetMax: args.budgetMax, dayOfWeek: args.dayOfWeek };
   if (args.categoryName) {
-    const { rows } = await query('SELECT id FROM categories WHERE is_active = true AND name ILIKE $1 LIMIT 1', [
-      `%${args.categoryName}%`,
-    ]);
-    if (rows[0]) filters.categoryId = rows[0].id;
+    const match = await resolveCategoryByText(args.categoryName);
+    if (match) filters.categoryId = match.id;
   }
   if (req?.user?.location_lat && req?.user?.location_lng) {
     filters.lat = req.user.location_lat;

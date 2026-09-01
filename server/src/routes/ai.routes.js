@@ -7,6 +7,7 @@ import { attachUserIfPresent } from '../middleware/auth.js';
 import { parseSearchIntent, chatCompletion, groqConfigured } from '../services/groq.service.js';
 import { searchProviders } from '../services/search.service.js';
 import { TOOLS, executeTool } from '../services/ai-actions.service.js';
+import { resolveCategoryByText } from '../services/category.service.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.post(
 
     let categoryId = null;
     if (intent.categoryName) {
-      const match = categories.find((c) => c.name.toLowerCase().includes(intent.categoryName.toLowerCase()));
+      const match = await resolveCategoryByText(intent.categoryName);
       if (match) categoryId = match.id;
     }
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
+import CategoryPicker from '../../components/CategoryPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
-const STEPS = ['Categories', 'Services', 'Description', 'Business info', 'Image', 'Portfolio', 'Availability', 'Service area', 'Publish'];
+const STEPS = ['Services you offer', 'Custom services', 'Description', 'Business info', 'Image', 'Portfolio', 'Availability', 'Service area', 'Publish'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function OnboardingWizardPage() {
@@ -38,8 +39,6 @@ export default function OnboardingWizardPage() {
     });
   }, [selectedCategoryIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleCategory = (id) =>
-    setSelectedCategoryIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const toggleService = (id) =>
     setSelectedServiceIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -116,24 +115,20 @@ export default function OnboardingWizardPage() {
       <div className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card min-h-[280px]">
         {step === 0 && (
           <div>
-            <h2 className="font-display text-xl mb-3">What do you do?</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => toggleCategory(c.id)}
-                  className={`rounded-xl border px-3 py-2 text-sm text-left ${selectedCategoryIds.includes(c.id) ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}
-                >
-                  {c.icon} {c.name}
-                </button>
-              ))}
-            </div>
+            <h2 className="font-display text-xl mb-1">What services do you offer?</h2>
+            <p className="text-sm text-ink-700/60 mb-3">
+              Search or browse by section, and select as many as you genuinely offer — there's no limit.
+            </p>
+            <CategoryPicker selectedIds={selectedCategoryIds} onChange={setSelectedCategoryIds} />
           </div>
         )}
 
         {step === 1 && (
           <div>
-            <h2 className="font-display text-xl mb-3">Which services?</h2>
+            <h2 className="font-display text-xl mb-1">Add specific services (optional)</h2>
+            <p className="text-sm text-ink-700/60 mb-3">
+              Break a category down further, e.g. "IKEA Assembly" under Furniture Assembly — or skip this and continue.
+            </p>
             {selectedCategoryIds.map((catId) => (
               <div key={catId} className="mb-3">
                 <p className="text-sm font-medium text-ink-700/70 mb-1">{categories.find((c) => c.id === catId)?.name}</p>

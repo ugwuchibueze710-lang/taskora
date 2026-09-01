@@ -2,33 +2,25 @@
 // invoked explicitly with `npm run seed`, and it refuses to run against a
 // database that already has real users, so it can't silently pollute a
 // live production marketplace with fake accounts.
+//
+// The category catalog itself is NOT duplicated here — it's synced from the
+// single central data file (server/src/data/categories.data.js) via
+// syncCategoryCatalog(), the exact same function the server calls on every
+// boot. This script only adds demo USER/PROVIDER accounts on top of it.
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
+import { syncCategoryCatalog } from '../src/services/category.service.js';
 
-const CATEGORIES = [
-  ['Handyman', '🔧'], ['Plumbing', '🚰'], ['Electrical', '💡'], ['Locksmith', '🔑'],
-  ['Lawn Care', '🌱'], ['Landscaping', '🌳'], ['House Cleaning', '🧹'], ['Window Cleaning', '🪟'],
-  ['Moving', '📦'], ['Painting', '🎨'], ['Roofing', '🏠'], ['HVAC', '❄️'],
-  ['Appliance Repair', '🔌'], ['Home Improvement', '🛠️'], ['Carpentry', '🪚'], ['Furniture Assembly', '🪑'],
-  ['Junk Removal', '🚛'], ['Pressure Washing', '💦'], ['Pest Control', '🐜'], ['Auto Services', '🚗'],
-  ['Mobile Mechanic', '🔩'], ['Photography', '📷'], ['Videography', '🎥'], ['Beauty', '💅'],
-  ['Hair', '💇'], ['Makeup', '💄'], ['Personal Training', '🏋️'], ['Tutoring', '📚'],
-  ['Computer/IT', '💻'], ['Pet Services', '🐾'], ['Childcare', '🍼'], ['Senior Assistance', '🦯'],
-  ['Delivery', '🚚'], ['Errands', '🏃'], ['Event Services', '🎉'], ['Wedding Services', '💍'],
-  ['Music/Entertainment', '🎵'], ['Other / Custom Service', '✨'],
-];
-
-const SERVICES = {
-  'House Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Move-out Cleaning', 'Recurring Cleaning'],
-  'Window Cleaning': ['Interior Window Cleaning', 'Exterior Window Cleaning', 'Gutter + Window Combo'],
-  'Lawn Care': ['Mowing', 'Edging', 'Weed Control', 'Fertilizing'],
-  Handyman: ['Furniture Assembly', 'TV Mounting', 'Drywall Repair', 'General Repairs'],
-  Plumbing: ['Leak Repair', 'Drain Cleaning', 'Fixture Installation', 'Water Heater Service'],
-  Electrical: ['Outlet Installation', 'Lighting Installation', 'Panel Upgrade', 'Ceiling Fan Installation'],
-  Locksmith: ['Lockout Service', 'Lock Rekey', 'Lock Installation'],
-  Moving: ['Local Moving', 'Furniture Moving', 'Packing Help'],
-  'Furniture Assembly': ['IKEA Assembly', 'Bed Frame Assembly', 'Office Furniture Assembly'],
+// A few finer-grained sub-services under some demo providers' categories,
+// purely for demoing the optional "specific services" layer.
+const DEMO_SUB_SERVICES = {
+  'home-cleaning': ['Standard House Cleaning', 'Recurring Cleaning'],
+  'window-cleaning': ['Interior Window Cleaning', 'Exterior Window Cleaning'],
+  handyman: ['General Repairs', 'Drywall Repair'],
+  'furniture-assembly': ['IKEA Assembly', 'Bed Frame Assembly'],
+  'lawn-mowing': ['Weekly Mowing', 'Edging'],
+  landscaping: ['Landscape Design'],
 };
 
 async function main() {
@@ -37,31 +29,28 @@ async function main() {
 
   const existingUsers = await client.query('SELECT count(*) FROM users');
   if (Number(existingUsers.rows[0].count) > 0) {
-    console.log('Refusing to seed: this database already has real user accounts.');
-    console.log('If this is genuinely a fresh dev database you want reseeded, wipe it first.');
+    console.log('Refusing to seed demo accounts: this database already has real user accounts.');
+    console.log('Category catalog sync is safe to run regardless, so running that now...');
     await client.end();
+    await syncCategoryCatalog();
     return;
   }
 
-  console.log('Seeding categories & services...');
-  const categoryIds = {};
-  for (const [i, [name, icon]] of CATEGORIES.entries()) {
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const { rows } = await client.query(
-      `INSERT INTO categories (slug, name, icon, sort_order) VALUES ($1,$2,$3,$4)
-       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [slug, name, icon, i]
-    );
-    categoryIds[name] = rows[0].id;
-  }
-  for (const [categoryName, services] of Object.entries(SERVICES)) {
-    const categoryId = categoryIds[categoryName];
+  console.log('Syncing category catalog...');
+  await syncCategoryCatalog();
+
+  const catIdBySlug = {};
+  const { rows: catRows } = await client.query('SELECT id, slug FROM categories');
+  for (const row of catRows) catIdBySlug[row.slug] = row.id;
+
+  for (const [slug, names] of Object.entries(DEMO_SUB_SERVICES)) {
+    const categoryId = catIdBySlug[slug];
     if (!categoryId) continue;
-    for (const svc of services) {
-      const slug = svc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    for (const name of names) {
+      const svcSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       await client.query(
         `INSERT INTO services (category_id, name, slug) VALUES ($1,$2,$3) ON CONFLICT (category_id, slug) DO NOTHING`,
-        [categoryId, svc, slug]
+        [categoryId, name, svcSlug]
       );
     }
   }
@@ -86,9 +75,10 @@ async function main() {
   await client.query('INSERT INTO user_settings (user_id) VALUES ($1)', [customerRows[0].id]);
 
   const providerSeeds = [
-    { first: 'Alex', last: 'Rivera', business: "Rivera's Cleaning Co.", categories: ['House Cleaning', 'Window Cleaning'], desc: 'Family-owned residential cleaning, 8 years serving the Owensboro area.' },
-    { first: 'Sam', last: 'Chen', business: 'Chen Handyman Services', categories: ['Handyman', 'Furniture Assembly'], desc: 'Reliable handyman for repairs, assembly, and mounting.' },
-    { first: 'Morgan', last: 'Blake', business: "Blake's Lawn & Landscape", categories: ['Lawn Care', 'Landscaping'], desc: 'Weekly mowing and full landscaping design.' },
+    { first: 'Alex', last: 'Rivera', business: "Rivera's Cleaning Co.", categorySlugs: ['home-cleaning', 'window-cleaning'], desc: 'Family-owned residential cleaning, 8 years serving the Owensboro area.', radius: 25 },
+    { first: 'Sam', last: 'Chen', business: 'Chen Handyman Services', categorySlugs: ['handyman', 'furniture-assembly'], desc: 'Reliable handyman for repairs, assembly, and mounting.', radius: 20 },
+    { first: 'Morgan', last: 'Blake', business: "Blake's Lawn & Landscape", categorySlugs: ['lawn-mowing', 'landscaping'], desc: 'Weekly mowing and full landscaping design.', radius: 30 },
+    { first: 'Jordan', last: 'Reyes', business: "Reyes Locksmith & Security", categorySlugs: ['locksmith', 'home-security'], desc: 'Licensed locksmith — lockouts, rekeys, and security installs.', radius: 40 },
   ];
 
   for (const [i, p] of providerSeeds.entries()) {
@@ -105,14 +95,14 @@ async function main() {
 
     const { rows: providerRows } = await client.query(
       `INSERT INTO providers (user_id, business_name, display_name, description, status, base_location_label, base_lat, base_lng, service_radius_miles, published_at, rating_avg, rating_count, completed_jobs_count)
-       VALUES ($1,$2,$3,$4,'active',$5,$6,$7,25, now(), $8, $9, $10) RETURNING id`,
-      [userId, p.business, `${p.first} ${p.last}`, p.desc, 'Owensboro, KY', 37.7742 + i * 0.02, -87.1133 - i * 0.02, 4.6 + i * 0.1, 12 + i * 4, 8 + i * 3]
+       VALUES ($1,$2,$3,$4,'active',$5,$6,$7,$8, now(), $9, $10, $11) RETURNING id`,
+      [userId, p.business, `${p.first} ${p.last}`, p.desc, 'Owensboro, KY', 37.7742 + i * 0.02, -87.1133 - i * 0.02, p.radius, 4.6 + i * 0.1, 12 + i * 4, 8 + i * 3]
     );
     const providerId = providerRows[0].id;
-    await client.query('INSERT INTO provider_service_areas (provider_id, radius_miles) VALUES ($1, 25)', [providerId]);
+    await client.query('INSERT INTO provider_service_areas (provider_id, radius_miles) VALUES ($1, $2)', [providerId, p.radius]);
 
-    for (const catName of p.categories) {
-      const catId = categoryIds[catName];
+    for (const slug of p.categorySlugs) {
+      const catId = catIdBySlug[slug];
       if (!catId) continue;
       await client.query('INSERT INTO provider_categories (provider_id, category_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [
         providerId, catId,
@@ -129,7 +119,7 @@ async function main() {
   console.log('Seed complete:');
   console.log('  Admin:    admin@taskora.test / test1234');
   console.log('  Customer: customer@taskora.test / test1234');
-  console.log('  Providers: alex@taskora.test, sam@taskora.test, morgan@taskora.test / test1234');
+  console.log('  Providers: alex@taskora.test, sam@taskora.test, morgan@taskora.test, jordan@taskora.test / test1234');
   await client.end();
 }
 

@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { pool } from './lib/db.js';
 import { AppError } from './lib/errors.js';
+import { syncCategoryCatalog } from './services/category.service.js';
 
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -122,6 +123,21 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Taskora API listening on port ${PORT}`);
-});
+
+// Populate/refresh the category catalog from the central data file before
+// accepting traffic. This is what makes categories show up with zero manual
+// steps (no npm run seed, no admin console, no direct DB access) — it's a
+// pure upsert keyed by slug, so it's safe to run on every boot and never
+// deletes a category a provider may already be using.
+syncCategoryCatalog()
+  .then(({ groups, categories, activeInDb }) => {
+    console.log(`Category catalog synced: ${groups} groups, ${categories} categories defined, ${activeInDb} active in DB.`);
+  })
+  .catch((err) => {
+    console.error('Category catalog sync failed (server will still start):', err.message);
+  })
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`Taskora API listening on port ${PORT}`);
+    });
+  });

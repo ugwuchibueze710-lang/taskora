@@ -1,25 +1,45 @@
-import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
 import CategoryCard from '../../components/CategoryCard.jsx';
 import Spinner from '../../components/Spinner.jsx';
 import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
+const POPULAR_LIMIT = 12;
+const PER_GROUP_LIMIT = 8;
+
 export default function HomePage() {
   const { user } = useAuth();
-  const [categories, setCategories] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [categoryQuery, setCategoryQuery] = useState('');
   const [history, setHistory] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const { locked } = useTaskoraLocation();
+  const { locked, location } = useTaskoraLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user.current_mode === 'provider') return;
-    api.get('/categories').then(({ data }) => setCategories(data.categories));
+    api.get('/categories/groups').then(({ data }) => setGroups(data.groups));
     api.get('/search/history').then(({ data }) => setHistory(data.history)).catch(() => {});
   }, [user.current_mode]);
+
+  const allCategories = useMemo(() => groups.flatMap((g) => g.categories), [groups]);
+  const popular = useMemo(() => allCategories.slice(0, POPULAR_LIMIT), [allCategories]);
+
+  const q = categoryQuery.trim().toLowerCase();
+  const filteredGroups = useMemo(() => {
+    if (!q) return groups;
+    return groups
+      .map((g) => ({
+        ...g,
+        categories: g.categories.filter(
+          (c) => c.name.toLowerCase().includes(q) || (c.keywords || []).some((k) => k.toLowerCase().includes(q))
+        ),
+      }))
+      .filter((g) => g.categories.length > 0);
+  }, [groups, q]);
 
   // "/" is the customer home screen. A user currently in Provider Mode landing
   // here (e.g. after login) should see their provider dashboard instead —
@@ -50,7 +70,9 @@ export default function HomePage() {
       <section className="rounded-3xl bg-gradient-to-br from-ember-500 to-ember-700 px-6 py-12 text-center text-white shadow-pop">
         <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2">Find someone who can do this.</h1>
         <p className="text-ember-50/90 mb-6">
-          {locked ? 'Tell Taskora what you need and we\'ll find the right local pro.' : 'Set your location, then tell us what you need.'}
+          {locked
+            ? `Searching near ${location?.label || 'your location'}. Tell Taskora what you need and we'll find the right local pro.`
+            : 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
         </p>
         <form onSubmit={runSearch} className="mx-auto flex max-w-xl overflow-hidden rounded-full bg-white shadow-lg">
           <input
@@ -81,11 +103,55 @@ export default function HomePage() {
       </section>
 
       <section>
-        <h2 className="font-display text-2xl mb-4">Browse categories</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-          {categories.map((c) => (
-            <CategoryCard key={c.id} category={c} />
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <h2 className="font-display text-2xl">Browse services</h2>
+          <Link to="/services" className="text-sm font-medium text-ember-600 hover:text-ember-700 whitespace-nowrap">
+            See all services →
+          </Link>
+        </div>
+        <input
+          value={categoryQuery}
+          onChange={(e) => setCategoryQuery(e.target.value)}
+          placeholder="Search services (e.g. locksmith, house cleaning, tutoring)"
+          className="mb-5 w-full max-w-md rounded-full border border-ink-900/15 px-4 py-2.5 text-sm outline-none focus:border-ember-400"
+        />
+
+        {groups.length === 0 && (
+          <div className="flex justify-center py-8"><Spinner size={24} /></div>
+        )}
+
+        {!q && popular.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">Popular right now</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {popular.map((c) => (
+                <CategoryCard key={c.id} category={c} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-8">
+          {filteredGroups.map((g) => (
+            <div key={g.slug}>
+              <div className="flex items-baseline justify-between mb-3">
+                <h3 className="font-display text-lg">{g.name}</h3>
+                {g.categories.length > PER_GROUP_LIMIT && !q && (
+                  <Link to={`/services?group=${g.slug}`} className="text-xs font-medium text-ember-600 hover:text-ember-700">
+                    See all {g.categories.length} →
+                  </Link>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                {(q ? g.categories : g.categories.slice(0, PER_GROUP_LIMIT)).map((c) => (
+                  <CategoryCard key={c.id} category={c} />
+                ))}
+              </div>
+            </div>
           ))}
+          {q && filteredGroups.length === 0 && (
+            <p className="text-sm text-ink-700/60">No services match "{categoryQuery}". Try a broader term, or use the search bar above.</p>
+          )}
         </div>
       </section>
     </div>

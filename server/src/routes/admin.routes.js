@@ -137,14 +137,24 @@ router.patch(
       icon: z.string().max(20).optional(),
       sortOrder: z.number().int().optional(),
       isActive: z.boolean().optional(),
+      description: z.string().max(500).nullable().optional(),
+      imageUrl: z.string().max(2000).nullable().optional(),
+      keywords: z.array(z.string().max(60)).optional(),
     })
   ),
   asyncHandler(async (req, res) => {
-    const { name, icon, sortOrder, isActive } = req.body;
+    const { name, icon, sortOrder, isActive, description, imageUrl, keywords } = req.body;
     const { rows } = await query(
-      `UPDATE categories SET name = COALESCE($1, name), icon = COALESCE($2, icon), sort_order = COALESCE($3, sort_order), is_active = COALESCE($4, is_active)
-       WHERE id = $5 RETURNING *`,
-      [name, icon, sortOrder, isActive, req.params.id]
+      `UPDATE categories SET
+         name = COALESCE($1, name),
+         icon = COALESCE($2, icon),
+         sort_order = COALESCE($3, sort_order),
+         is_active = COALESCE($4, is_active),
+         description = COALESCE($5, description),
+         image_url = COALESCE($6, image_url),
+         keywords = COALESCE($7, keywords)
+       WHERE id = $8 RETURNING *`,
+      [name, icon, sortOrder, isActive, description, imageUrl, keywords, req.params.id]
     );
     if (!rows[0]) throw notFound('Category not found.');
     res.json({ category: rows[0] });
