@@ -70,6 +70,17 @@ export default function Nav() {
                 {isProvider ? 'Customer Mode' : 'Service Provider Mode'}
               </button>
               <div className="my-1 h-px bg-ink-900/5" />
+              {/* The primary links render as a top bar on md+ screens (hidden below
+                  that breakpoint), so without this they'd be completely unreachable
+                  on mobile — repeat them here, visible only when that bar is hidden. */}
+              <div className="md:hidden">
+                {links.map(([to, label]) => (
+                  <Link key={to} to={to} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-ink-900/5">
+                    {label}
+                  </Link>
+                ))}
+                <div className="my-1 h-px bg-ink-900/5" />
+              </div>
               {(isProvider
                 ? [
                     ['/provider', 'Dashboard'], ['/provider/services', 'Services'], ['/provider/availability', 'Availability'],
