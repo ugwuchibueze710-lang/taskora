@@ -96,8 +96,15 @@ export default function Nav() {
           )}
         </div>
 
-        <Link to={isProvider ? '/provider' : '/'} className="font-display text-xl font-semibold text-ember-600 mr-2">
-          Taskora
+        <Link to={isProvider ? '/provider' : '/'} className="flex items-center gap-2 mr-2">
+          <span className="font-display text-xl font-semibold text-ember-600">Taskora</span>
+          <span className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-ember-100 flex items-center justify-center text-xs font-display font-semibold text-ember-600">
+            {user.avatar_url ? (
+              <img src={user.avatar_url} className="h-full w-full object-cover" alt="" />
+            ) : (
+              user.first_name?.[0]?.toUpperCase() || '?'
+            )}
+          </span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
