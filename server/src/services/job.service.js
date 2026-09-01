@@ -2,12 +2,15 @@ import { query, withTransaction } from '../lib/db.js';
 import { conflict, notFound, forbidden } from '../lib/errors.js';
 import { notify } from './notification.service.js';
 
-export const PLATFORM_FEE_RATE = 0.1; // Taskora's 10% platform fee, applied transparently everywhere.
+export const PLATFORM_FEE_RATE = 0.1; // Taskora's 10% service fee, added on top of the quoted price and paid by the customer.
 
+// `price` is the amount the provider quoted and is paid in full — the platform
+// fee is a surcharge added ON TOP of that for the customer to pay, never a cut
+// taken out of the provider's amount. providerAmount === price by design.
 export function computeFeeSplit(price) {
-  const total = Math.round(Number(price) * 100) / 100;
-  const platformFee = Math.round(total * PLATFORM_FEE_RATE * 100) / 100;
-  const providerAmount = Math.round((total - platformFee) * 100) / 100;
+  const providerAmount = Math.round(Number(price) * 100) / 100;
+  const platformFee = Math.round(providerAmount * PLATFORM_FEE_RATE * 100) / 100;
+  const total = Math.round((providerAmount + platformFee) * 100) / 100; // what the customer is actually charged
   return { total, platformFee, providerAmount };
 }
 

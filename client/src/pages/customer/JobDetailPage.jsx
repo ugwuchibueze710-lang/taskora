@@ -87,8 +87,8 @@ export default function JobDetailPage() {
         {job.scheduled_date && <p className="text-sm text-ink-700/60">Scheduled: {new Date(job.scheduled_date).toLocaleDateString()}</p>}
         <div className="pt-2 border-t border-ink-900/8 text-sm space-y-1">
           <div className="flex justify-between"><span>Service price</span><span>${job.price}</span></div>
-          <div className="flex justify-between text-ink-700/60"><span>Taskora fee (10%)</span><span>${job.platform_fee}</span></div>
-          <div className="flex justify-between font-semibold"><span>Provider receives</span><span>${job.provider_amount}</span></div>
+          <div className="flex justify-between text-ink-700/60"><span>Taskora service fee (10%)</span><span>+${job.platform_fee}</span></div>
+          <div className="flex justify-between font-semibold"><span>Total you pay</span><span>${(Number(job.price) + Number(job.platform_fee)).toFixed(2)}</span></div>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function JobDetailPage() {
       <div className="flex flex-wrap gap-2">
         {canPay && (
           <button disabled={busy} onClick={pay} className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60">
-            {busy ? 'Redirecting…' : `Pay $${job.price} to confirm`}
+            {busy ? 'Redirecting…' : `Pay $${(Number(job.price) + Number(job.platform_fee)).toFixed(2)} to confirm`}
           </button>
         )}
         {canConfirm && (
