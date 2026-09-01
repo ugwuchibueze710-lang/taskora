@@ -70,14 +70,17 @@ router.post(
   asyncHandler(async (req, res) => {
     const { job, isProvider } = await getJobForUser(req.params.id, req.user);
     if (!isProvider) throw badRequest('Only the assigned provider can decline this job.');
+    // Attempt the refund BEFORE committing the cancellation. If the refund call fails
+    // (Stripe error, network issue, etc.), the job must stay in its current status —
+    // never leave a job "cancelled" while its payment is silently stuck in "holding"
+    // with no refund and no audit record (see job.routes.js /cancel for the same fix).
+    const refund = await refundPayment(job.id, 'Provider declined the job');
     const updated = await transitionJob(job.id, 'cancelled', { byUserId: req.user.id, reason: req.body.reason || 'Declined by provider' });
     await query(
       `INSERT INTO cancellations (job_id, cancelled_by_user_id, reason, job_status_before, job_status_after, refund_status)
-       VALUES ($1, $2, $3, $4, 'cancelled', 'pending')`,
-      [job.id, req.user.id, req.body.reason || 'Declined by provider', job.status]
+       VALUES ($1, $2, $3, $4, 'cancelled', $5)`,
+      [job.id, req.user.id, req.body.reason || 'Declined by provider', job.status, refund?.status === 'refunded' ? 'refunded' : 'none']
     );
-    const refund = await refundPayment(job.id, 'Provider declined the job');
-    if (refund) await query(`UPDATE cancellations SET refund_status = 'refunded' WHERE job_id = $1`, [job.id]);
     await notifyJobParties(updated, {
       type: 'job_declined',
       customerTitle: 'Your job was declined',
@@ -169,8 +172,11 @@ router.post(
   asyncHandler(async (req, res) => {
     const { job } = await getJobForUser(req.params.id, req.user);
     const before = job.status;
-    const updated = await transitionJob(job.id, 'cancelled', { byUserId: req.user.id, reason: req.body.reason });
+    // Refund first, cancel second (see the same fix in /:id/decline above): if the
+    // refund call throws, the job must NOT be transitioned to the terminal "cancelled"
+    // state, otherwise held funds get stranded with no way to retry the refund.
     const refund = await refundPayment(job.id, req.body.reason || 'Job cancelled');
+    const updated = await transitionJob(job.id, 'cancelled', { byUserId: req.user.id, reason: req.body.reason });
     await query(
       `INSERT INTO cancellations (job_id, cancelled_by_user_id, reason, job_status_before, job_status_after, refund_status)
        VALUES ($1, $2, $3, $4, 'cancelled', $5)`,

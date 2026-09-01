@@ -252,17 +252,23 @@ router.post(
     if (dispute.status.startsWith('resolved') || dispute.status === 'closed') throw conflict('This dispute is already resolved.');
 
     const { resolution, notes } = req.body;
-    await query(
-      `UPDATE disputes SET status = $1, resolution_notes = $2, resolved_by_admin_id = $3, resolved_at = now() WHERE id = $4`,
-      [resolution, notes || null, req.user.id, dispute.id]
-    );
 
+    // Do the money-moving / job-state side effect FIRST, and only mark the dispute
+    // "resolved" if it actually succeeds. If refundPayment throws (Stripe error,
+    // network issue), the dispute must stay open rather than being permanently
+    // marked resolved_refund for a refund that never happened — see the identical
+    // fix applied to job.routes.js's /cancel and /decline handlers.
     if (resolution === 'resolved_refund') {
       await refundPayment(dispute.job_id, 'Dispute resolved with refund');
       await transitionJob(dispute.job_id, 'refunded', { byUserId: req.user.id, reason: notes });
     } else {
       await transitionJob(dispute.job_id, 'completed', { byUserId: req.user.id, reason: 'Dispute resolved, no refund' });
     }
+
+    await query(
+      `UPDATE disputes SET status = $1, resolution_notes = $2, resolved_by_admin_id = $3, resolved_at = now() WHERE id = $4`,
+      [resolution, notes || null, req.user.id, dispute.id]
+    );
 
     await notify(dispute.raised_by_user_id, {
       type: 'dispute_resolved',
