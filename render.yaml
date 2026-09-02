@@ -27,8 +27,19 @@ services:
       # against whatever domain Render assigns without any extra configuration.
       - key: GROQ_API_KEY
         sync: false
+      # llama-3.3-70b-versatile 404s ("does not exist or you do not have
+      # access to it") against this account's Groq API key even though it's
+      # a currently-documented model id — an account/tier access restriction
+      # on that specific model, not a wrong name. llama-3.1-8b-instant is
+      # Groq's lightweight tier and more likely to be enabled for this key;
+      # if AI-powered search still isn't kicking in after this deploys
+      # (interpreted.source stays "naive" / aiPowered stays false in
+      # /api/ai/search responses), check the Groq console for this key's
+      # enabled models rather than assuming the app is broken — the search
+      # feature itself keeps working correctly without Groq via the local
+      # category/keyword fallback either way.
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        value: llama-3.1-8b-instant
       - key: MAPBOX_TOKEN
         sync: false
       - key: STRIPE_SECRET_KEY

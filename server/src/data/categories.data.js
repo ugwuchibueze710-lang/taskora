@@ -41,10 +41,10 @@ export const CATEGORY_GROUPS = [
 export const CATEGORIES = [
   // ---- Home Services -------------------------------------------------
   cat('handyman', 'Handyman', 'home-services', 'General home repairs and small fix-it jobs.', ['handy man', 'odd jobs', 'general repairs', 'fix it']),
-  catImg('plumbing', 'Plumbing', 'home-services', 'Leaks, drains, fixtures, and water heater service.', ['plumber', 'leak repair', 'drain cleaning', 'pipe repair', 'water heater'], 'plumbing'),
-  catImg('electrician', 'Electrician', 'home-services', 'Wiring, outlets, panels, and lighting installation.', ['electrical', 'electrical repair', 'outlet installation', 'panel upgrade', 'wiring'], 'electrician'),
-  cat('hvac', 'HVAC', 'home-services', 'Heating, ventilation, and air conditioning service.', ['air conditioning', 'ac repair', 'furnace repair', 'heating repair', 'hvac repair']),
-  cat('appliance-repair', 'Appliance Repair', 'home-services', 'Repair for major home appliances.', ['fridge repair', 'washer repair', 'dryer repair', 'dishwasher repair', 'oven repair']),
+  catImg('plumbing', 'Plumbing', 'home-services', 'Leaks, drains, fixtures, and water heater service.', ['plumber', 'leak repair', 'drain cleaning', 'pipe repair', 'water heater', 'toilet', 'clogged', 'clog', 'leaking', 'leaky', 'faucet', 'sink', 'drain', 'pipe burst', 'no hot water'], 'plumbing'),
+  catImg('electrician', 'Electrician', 'home-services', 'Wiring, outlets, panels, and lighting installation.', ['electrical', 'electrical repair', 'outlet installation', 'panel upgrade', 'wiring', 'power outage', 'breaker tripping', 'outlet not working', 'light not working', 'sparking'], 'electrician'),
+  cat('hvac', 'HVAC', 'home-services', 'Heating, ventilation, and air conditioning service.', ['air conditioning', 'ac repair', 'furnace repair', 'heating repair', 'hvac repair', 'ac not cooling', 'no heat', 'thermostat', 'air conditioner broken']),
+  cat('appliance-repair', 'Appliance Repair', 'home-services', 'Repair for major home appliances.', ['fridge repair', 'washer repair', 'dryer repair', 'dishwasher repair', 'oven repair', 'refrigerator', 'washing machine', 'dryer not drying', 'dishwasher not draining']),
   catImg('home-cleaning', 'House Cleaning', 'home-services', 'Standard residential cleaning.', ['house cleaner', 'maid service', 'cleaning service', 'home cleaner'], 'house-cleaning'),
   cat('deep-cleaning', 'Deep Cleaning', 'home-services', 'Intensive top-to-bottom cleaning.', ['deep clean', 'move-out cleaning', 'move-in cleaning', 'spring cleaning']),
   cat('carpet-cleaning', 'Carpet Cleaning', 'home-services', 'Carpet and rug steam or shampoo cleaning.', ['rug cleaning', 'carpet shampoo', 'steam cleaning']),
@@ -73,7 +73,7 @@ export const CATEGORIES = [
   cat('packing-unpacking', 'Packing/Unpacking', 'home-services', 'Packing and unpacking help for a move.', ['packing service', 'unpacking help']),
 
   // ---- Yard & Outdoor --------------------------------------------------
-  cat('lawn-mowing', 'Lawn Mowing', 'yard-outdoor', 'Regular lawn mowing service.', ['mow my lawn', 'grass cutting']),
+  cat('lawn-mowing', 'Lawn Mowing', 'yard-outdoor', 'Regular lawn mowing service.', ['mow my lawn', 'grass cutting', 'mow', 'lawn', 'grass', 'yard mowing']),
   cat('lawn-care', 'Lawn Care', 'yard-outdoor', 'Fertilizing, weed control, and lawn treatment.', ['fertilizing', 'weed control', 'lawn treatment']),
   catImg('landscaping', 'Landscaping', 'yard-outdoor', 'Landscape design and installation.', ['landscaper', 'yard design'], 'landscaping'),
   cat('gardening', 'Gardening', 'yard-outdoor', 'Garden planting and maintenance.', ['gardener', 'garden maintenance']),

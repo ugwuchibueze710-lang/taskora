@@ -18,7 +18,7 @@ router.post(
   attachUserIfPresent,
   validateBody(z.object({ text: z.string().trim().min(1).max(500) })),
   asyncHandler(async (req, res) => {
-    const { rows: categories } = await query('SELECT id, name FROM categories WHERE is_active = true');
+    const { rows: categories } = await query('SELECT id, name, keywords FROM categories WHERE is_active = true');
     const intent = await parseSearchIntent(req.body.text, categories);
 
     let categoryId = null;
@@ -73,7 +73,12 @@ router.post(
       await recordCategorySearch({ categoryId, city });
     }
 
-    res.json({ ...result, interpreted: intent, aiPowered: groqConfigured() });
+    // aiPowered reflects whether Groq itself actually produced this
+    // interpretation (source === 'groq'), not merely whether a key is
+    // configured — a configured-but-failing/unavailable key (bad model id,
+    // outage, invalid key) still falls back to naiveParse and should be
+    // reported honestly as non-AI rather than claiming Groq ran.
+    res.json({ ...result, interpreted: intent, aiPowered: intent.source === 'groq' });
   })
 );
 

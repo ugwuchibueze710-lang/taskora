@@ -72,23 +72,31 @@ export async function searchProviders(filters = {}) {
   for (const p of candidates) {
     if (categoryId && !p.category_ids.includes(categoryId)) continue;
 
-    const haystack = [
-      p.business_name,
-      p.display_name,
-      p.description,
-      ...(p.category_names || []),
-      ...(p.service_names || []),
-      ...(p.category_keywords || []),
-    ]
+    // Two haystacks, scored separately: a provider's own business name +
+    // description is what THEY say they do (the strongest, most trustworthy
+    // signal for "does this provider actually offer what the customer asked
+    // for" — e.g. a description mentioning "clogged toilets" for a plumbing
+    // request), while the catalog haystack (assigned categories/services/
+    // category keyword aliases) is the structured, curated signal. Both
+    // count toward eligibility; business name/description gets extra weight
+    // on top so a provider who explicitly describes the requested job ranks
+    // above one who merely shares an incidental word with the query.
+    const nameDescHaystack = [p.business_name, p.display_name, p.description]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    const catalogHaystack = [...(p.category_names || []), ...(p.service_names || []), ...(p.category_keywords || [])]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
 
     let relevance = 0;
     if (kw.length) {
-      const matches = kw.filter((k) => haystack.includes(k)).length;
-      relevance = (matches / kw.length) * 40;
-      if (matches === 0) continue; // no keyword relevance at all -> not a match
+      const nameDescMatches = kw.filter((k) => nameDescHaystack.includes(k)).length;
+      const catalogMatches = kw.filter((k) => catalogHaystack.includes(k)).length;
+      const anyMatches = kw.filter((k) => nameDescHaystack.includes(k) || catalogHaystack.includes(k)).length;
+      if (anyMatches === 0) continue; // no keyword relevance at all -> not a match
+      relevance = (catalogMatches / kw.length) * 30 + (nameDescMatches / kw.length) * 25;
     } else {
       relevance = categoryId ? 30 : 15; // category-only or browse search
     }
