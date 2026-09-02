@@ -43,7 +43,7 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const { rows } = await query(
-      `SELECT qr.*, COALESCE(pr.business_name, pr.display_name) AS provider_name, pr.image_url
+      `SELECT qr.*, COALESCE(NULLIF(pr.business_name, ''), pr.display_name) AS provider_name, pr.image_url
          FROM quote_requests qr JOIN providers pr ON pr.id = qr.provider_id
         WHERE qr.customer_id = $1 ORDER BY qr.created_at DESC`,
       [req.user.id]

@@ -25,7 +25,7 @@ router.get(
       return res.json({ jobs: rows });
     }
     const { rows } = await query(
-      `SELECT j.*, COALESCE(pr.business_name, pr.display_name) AS provider_name, pr.image_url
+      `SELECT j.*, COALESCE(NULLIF(pr.business_name, ''), pr.display_name) AS provider_name, pr.image_url
          FROM jobs j JOIN providers pr ON pr.id = j.provider_id
         WHERE j.customer_id = $1 ORDER BY j.created_at DESC`,
       [req.user.id]

@@ -30,7 +30,7 @@ router.get(
     }
     const { rows } = await query(
       `SELECT conv.id, conv.last_message_at, pr.id AS provider_id,
-              COALESCE(pr.business_name, pr.display_name) AS provider_name, pr.image_url,
+              COALESCE(NULLIF(pr.business_name, ''), pr.display_name) AS provider_name, pr.image_url,
               (SELECT body FROM messages m WHERE m.conversation_id = conv.id ORDER BY created_at DESC LIMIT 1) AS last_message,
               (SELECT count(*) FROM messages m WHERE m.conversation_id = conv.id AND m.read_at IS NULL AND m.sender_user_id != $1) AS unread_count
          FROM conversations conv JOIN providers pr ON pr.id = conv.provider_id

@@ -77,6 +77,21 @@ router.patch(
   validateBody(businessInfoSchema),
   asyncHandler(async (req, res) => {
     const { businessName, displayName, description, businessPhone, pricingMode, priceAmount, autoReplyEnabled, autoReplyMessage } = req.body;
+    // COALESCE($n, column) below means "null in the request = leave this field
+    // alone" -- it does NOT mean "empty string leaves it alone". A client that
+    // submits '' (e.g. the onboarding wizard's "Business info (optional)" step,
+    // left blank) would otherwise get business_name = '' written literally,
+    // which is NOT NULL and so breaks every downstream
+    // `COALESCE(business_name, display_name)` fallback -- the provider's name
+    // renders blank everywhere (messages list, jobs list, admin views) instead
+    // of falling back to their display name. Treat a blank string the same as
+    // "not provided" for every optional text field here.
+    const blankToNull = (v) => (typeof v === 'string' && v.trim() === '' ? null : v);
+    const businessNameN = blankToNull(businessName);
+    const displayNameN = blankToNull(displayName);
+    const descriptionN = blankToNull(description);
+    const businessPhoneN = blankToNull(businessPhone);
+    const autoReplyMessageN = blankToNull(autoReplyMessage);
     const { rows } = await query(
       `UPDATE providers SET
          business_name = COALESCE($1, business_name),
@@ -89,7 +104,7 @@ router.patch(
          auto_reply_message = COALESCE($8, auto_reply_message),
          updated_at = now()
        WHERE id = $9 RETURNING *`,
-      [businessName, displayName, description, businessPhone, pricingMode, priceAmount, autoReplyEnabled, autoReplyMessage, req.user.provider_id]
+      [businessNameN, displayNameN, descriptionN, businessPhoneN, pricingMode, priceAmount, autoReplyEnabled, autoReplyMessageN, req.user.provider_id]
     );
     await recomputeCompleteness(req.user.provider_id);
     res.json({ provider: rows[0] });

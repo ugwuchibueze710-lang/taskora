@@ -223,7 +223,7 @@ router.get(
   '/jobs',
   asyncHandler(async (req, res) => {
     const { rows } = await query(
-      `SELECT j.*, cu.email AS customer_email, COALESCE(pr.business_name, pr.display_name) AS provider_name
+      `SELECT j.*, cu.email AS customer_email, COALESCE(NULLIF(pr.business_name, ''), pr.display_name) AS provider_name
          FROM jobs j JOIN users cu ON cu.id = j.customer_id JOIN providers pr ON pr.id = j.provider_id
         ORDER BY j.created_at DESC LIMIT 200`
     );
@@ -354,12 +354,12 @@ router.get(
     // actually readable without cross-referencing /admin/providers by id.
     const [pro, boost] = await Promise.all([
       query(
-        `SELECT s.*, COALESCE(p.business_name, p.display_name) AS provider_name
+        `SELECT s.*, COALESCE(NULLIF(p.business_name, ''), p.display_name) AS provider_name
            FROM subscriptions s JOIN providers p ON p.id = s.provider_id
           ORDER BY s.created_at DESC LIMIT 200`
       ),
       query(
-        `SELECT b.*, COALESCE(p.business_name, p.display_name) AS provider_name
+        `SELECT b.*, COALESCE(NULLIF(p.business_name, ''), p.display_name) AS provider_name
            FROM boosts b JOIN providers p ON p.id = b.provider_id
           ORDER BY b.created_at DESC LIMIT 200`
       ),
