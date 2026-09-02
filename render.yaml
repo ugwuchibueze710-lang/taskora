@@ -39,6 +39,8 @@ services:
         sync: false
       - key: STRIPE_PRO_PRICE_ID
         sync: false
+      - key: STRIPE_PRO_YEARLY_PRICE_ID
+        sync: false
       - key: STRIPE_BOOST_PRICE_ID
         sync: false
 
