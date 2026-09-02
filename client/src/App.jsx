@@ -33,6 +33,7 @@ import ProviderBoostPage from './pages/provider/ProviderBoostPage.jsx';
 import ProviderSettingsPage from './pages/provider/ProviderSettingsPage.jsx';
 
 import AdminPage from './pages/admin/AdminPage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
   return (
@@ -70,6 +71,11 @@ export default function App() {
 
         <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
       </Route>
+
+      {/* Catch-all: without this, an unmatched URL (mistyped, stale bookmark,
+          old deep link) renders nothing at all -- a blank white page with no
+          way back except editing the URL by hand. */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
