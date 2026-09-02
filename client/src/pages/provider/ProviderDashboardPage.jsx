@@ -5,15 +5,19 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import StarRating from '../../components/StarRating.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
+const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 182;
+
 export default function ProviderDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [views, setViews] = useState(null);
+  const [subStatus, setSubStatus] = useState(null);
 
   useEffect(() => {
     if (!user.provider_id) return;
     api.get('/providers/me').then(({ data }) => setData(data));
     api.get('/providers/me/analytics/views').then(({ data }) => setViews(data.views));
+    api.get('/subscriptions/status').then(({ data }) => setSubStatus(data)).catch(() => {});
   }, [user.provider_id]);
 
   if (!user.provider_id) {
@@ -31,9 +35,51 @@ export default function ProviderDashboardPage() {
 
   if (!data) return <div className="flex justify-center py-16"><Spinner size={28} /></div>;
   const { provider } = data;
+  const isPro = subStatus?.pro?.status === 'active';
+  const publishedAt = provider.published_at ? new Date(provider.published_at) : null;
+  const freeWindowEndsAt = publishedAt ? new Date(publishedAt.getTime() + SIX_MONTHS_MS) : null;
+  const inFreeWindow = freeWindowEndsAt ? Date.now() < freeWindowEndsAt.getTime() : false;
 
   return (
     <div className="space-y-6">
+      {!isPro && subStatus && (
+        inFreeWindow ? (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-sky-800">🎉 Free priority distribution is active</p>
+              <p className="text-xs text-sky-700 mt-0.5">
+                New providers get 6 months of full algorithmic distribution, no charge. Yours runs until{' '}
+                {freeWindowEndsAt.toLocaleDateString()}. Upgrade to Pro anytime to keep priority placement after that.
+              </p>
+            </div>
+            <Link to="/provider/pro" className="rounded-full border border-sky-300 bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 whitespace-nowrap">
+              Learn about Pro
+            </Link>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Your free distribution period has ended</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                You're still fully active and searchable, but you now rank as a non-priority provider. Subscribe to Taskora
+                Pro for priority placement above non-priority providers in relevant searches.
+              </p>
+            </div>
+            <Link to="/provider/pro" className="rounded-full bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800 whitespace-nowrap">
+              Upgrade to Pro
+            </Link>
+          </div>
+        )
+      )}
+      {isPro && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-2">
+          <span className="text-lg">⭐</span>
+          <p className="text-sm font-semibold text-emerald-800">
+            Taskora Pro is active — you have priority placement in relevant searches.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>

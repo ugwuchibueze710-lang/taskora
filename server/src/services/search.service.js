@@ -1,5 +1,6 @@
 import { query } from '../lib/db.js';
 import { distanceMiles } from './mapbox.service.js';
+import { computeProviderTier, TIER_LABEL } from './provider-tier.service.js';
 
 /**
  * Core provider search + ranking. This is the single source of truth for
@@ -11,6 +12,19 @@ import { distanceMiles } from './mapbox.service.js';
  *   categoryId, keywords: string[], lat, lng, dayOfWeek (0-6), budgetMax,
  *   limit, offset
  * }
+ *
+ * RANKING RULE (see provider-tier.service.js for the shared tier logic used
+ * identically here and in the admin dashboard):
+ *   1. Eligibility first — category/keyword relevance, location radius,
+ *      availability, and budget all gate whether a provider appears at all.
+ *   2. Among eligible providers, PRIORITY TIER always wins over a lower tier,
+ *      regardless of score: an active-Pro provider outranks every provider
+ *      still in their free window, who in turn outranks every provider whose
+ *      free window has expired without subscribing.
+ *   3. Within the same tier, providers are ordered by a rating-weighted score
+ *      (plus relevance/distance/completeness/etc. as secondary signals) — a
+ *      lower-rated Pro provider never jumps ahead of a higher-rated Pro
+ *      provider just because both are paying.
  */
 export async function searchProviders(filters = {}) {
   const { categoryId, keywords = [], lat, lng, dayOfWeek, budgetMax, limit = 20, offset = 0 } = filters;
@@ -26,7 +40,12 @@ export async function searchProviders(filters = {}) {
              CROSS JOIN LATERAL unnest(c2.keywords) AS kw
             WHERE pc2.provider_id = p.id),
           '{}'
-        ) AS category_keywords
+        ) AS category_keywords,
+        EXISTS (
+          SELECT 1 FROM subscriptions sub
+           WHERE sub.provider_id = p.id AND sub.status = 'active'
+             AND (sub.current_period_end IS NULL OR sub.current_period_end > now())
+        ) AS has_active_pro
       FROM providers p
       JOIN users u ON u.id = p.user_id
       LEFT JOIN provider_categories pc ON pc.provider_id = p.id
@@ -93,24 +112,30 @@ export async function searchProviders(filters = {}) {
     const completenessScore = (p.profile_completeness / 100) * 5;
     const jobsScore = Math.min(5, Math.log2((p.completed_jobs_count || 0) + 1));
     const recentActivityScore = p.last_active_at && Date.now() - new Date(p.last_active_at).getTime() < 1000 * 60 * 60 * 24 * 14 ? 5 : 0;
-    const proBonus = p.is_pro ? 8 : 0;
     const boostBonus = p.is_boosted ? 12 : 0;
 
-    const totalScore = relevance + distanceScore + ratingScore + completenessScore + jobsScore + recentActivityScore + proBonus + boostBonus;
+    // Tier is a hard priority gate (see provider-tier.service.js): a provider
+    // in a higher tier always outranks every provider in a lower tier,
+    // regardless of score. Score only breaks ties *within* the same tier —
+    // it must never be large enough to let a lower tier out-rank a higher
+    // one, which is why tier is sorted as a separate, primary key below
+    // rather than folded into the score as a bonus.
+    const tier = computeProviderTier(p);
+    const withinTierScore = relevance + distanceScore + ratingScore + completenessScore + jobsScore + recentActivityScore + boostBonus;
 
-    scored.push({ provider: p, distance, score: totalScore });
+    scored.push({ provider: p, distance, tier, score: withinTierScore });
   }
 
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => a.tier - b.tier || b.score - a.score);
   const page = scored.slice(offset, offset + limit);
 
   return {
     total: scored.length,
-    results: page.map(({ provider, distance, score }) => formatCard(provider, distance, score)),
+    results: page.map(({ provider, distance, tier, score }) => formatCard(provider, distance, tier, score)),
   };
 }
 
-function formatCard(p, distance, score) {
+function formatCard(p, distance, tier, score) {
   return {
     id: p.id,
     name: p.business_name || p.display_name || `${p.first_name} ${p.last_name}`,
@@ -122,7 +147,8 @@ function formatCard(p, distance, score) {
     reviewCount: p.rating_count,
     distanceMiles: distance != null ? Math.round(distance * 10) / 10 : null,
     availabilityMode: p.availability_mode,
-    isPro: p.is_pro,
+    isPro: p.has_active_pro,
+    tier: TIER_LABEL[tier],
     isSponsored: p.is_boosted,
     pricingMode: p.pricing_mode,
     priceAmount: p.pricing_mode === 'hidden' ? null : p.price_amount,

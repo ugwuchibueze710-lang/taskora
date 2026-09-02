@@ -9,18 +9,36 @@ function requireStripe() {
   return stripe;
 }
 
-const PRICE_ENV = { pro: 'STRIPE_PRO_PRICE_ID', boost: 'STRIPE_BOOST_PRICE_ID' };
+// Taskora Pro offers monthly and yearly billing; Boost (a separate, unrelated
+// feature) only ever bills monthly. Each interval maps to its own real Stripe
+// Price object — created and priced entirely in the Stripe Dashboard, never
+// invented here.
+const PRICE_ENV = {
+  pro: { month: 'STRIPE_PRO_PRICE_ID', year: 'STRIPE_PRO_YEARLY_PRICE_ID' },
+  boost: { month: 'STRIPE_BOOST_PRICE_ID' },
+};
 const TABLE = { pro: 'subscriptions', boost: 'boosts' };
 
-export async function startCheckout(type, { providerId, providerEmail, successUrl, cancelUrl }) {
+export async function startCheckout(type, { providerId, providerEmail, successUrl, cancelUrl, interval = 'month' }) {
   const stripe = requireStripe();
-  const priceId = process.env[PRICE_ENV[type]];
-  if (!priceId) throw badRequest(`${type === 'pro' ? 'Taskora Pro' : 'Taskora Boost'} is not configured yet.`);
+  const priceId = process.env[PRICE_ENV[type][interval]];
+  if (!priceId) {
+    const label = type === 'pro' ? 'Taskora Pro' : 'Taskora Boost';
+    throw badRequest(`${label} (${interval === 'year' ? 'yearly' : 'monthly'}) is not configured yet.`);
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer_email: providerEmail,
     line_items: [{ price: priceId, quantity: 1 }],
+    // IMPORTANT: metadata on the Checkout Session does NOT automatically carry
+    // over to the Subscription object Stripe creates from it — they are two
+    // separate API objects. handleSubscriptionEvent() below reads metadata
+    // off the *Subscription* (from customer.subscription.* webhook events),
+    // so it must be set here via subscription_data.metadata, not just on the
+    // session. Without this, a real successful payment would silently never
+    // activate the provider's priority status.
+    subscription_data: { metadata: { providerId, kind: `${type}_subscription` } },
     metadata: { providerId, kind: `${type}_subscription` },
     success_url: successUrl,
     cancel_url: cancelUrl,
@@ -34,20 +52,39 @@ export async function handleSubscriptionEvent(type, subscription) {
   const status = subscription.status; // active | past_due | canceled | incomplete | ...
   const normalizedStatus = ['active', 'past_due', 'canceled', 'incomplete'].includes(status) ? status : 'incomplete';
   const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
+  // The real billing interval, read from the actual Stripe Price on the
+  // subscription — never guessed or hardcoded — so admin views and the
+  // provider's own "renews monthly/yearly" display always match Stripe.
+  const billingInterval = subscription.items?.data?.[0]?.price?.recurring?.interval === 'year' ? 'year' : 'month';
 
   const existing = await query(`SELECT * FROM ${table} WHERE stripe_subscription_id = $1`, [subscription.id]);
   if (existing.rows[0]) {
-    await query(`UPDATE ${table} SET status = $1, current_period_end = $2, updated_at = now() WHERE stripe_subscription_id = $3`, [
-      normalizedStatus,
-      periodEnd,
-      subscription.id,
-    ]);
+    if (type === 'pro') {
+      await query(
+        `UPDATE ${table} SET status = $1, current_period_end = $2, billing_interval = $3, updated_at = now() WHERE stripe_subscription_id = $4`,
+        [normalizedStatus, periodEnd, billingInterval, subscription.id]
+      );
+    } else {
+      await query(`UPDATE ${table} SET status = $1, current_period_end = $2, updated_at = now() WHERE stripe_subscription_id = $3`, [
+        normalizedStatus,
+        periodEnd,
+        subscription.id,
+      ]);
+    }
   } else if (providerId) {
-    await query(
-      `INSERT INTO ${table} (provider_id, stripe_subscription_id, stripe_customer_id, status, current_period_end)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [providerId, subscription.id, subscription.customer, normalizedStatus, periodEnd]
-    );
+    if (type === 'pro') {
+      await query(
+        `INSERT INTO ${table} (provider_id, stripe_subscription_id, stripe_customer_id, status, current_period_end, billing_interval)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [providerId, subscription.id, subscription.customer, normalizedStatus, periodEnd, billingInterval]
+      );
+    } else {
+      await query(
+        `INSERT INTO ${table} (provider_id, stripe_subscription_id, stripe_customer_id, status, current_period_end)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [providerId, subscription.id, subscription.customer, normalizedStatus, periodEnd]
+      );
+    }
   } else {
     return; // nothing we can attribute this to
   }
