@@ -9,10 +9,26 @@
 import { query } from '../lib/db.js';
 
 // Business rule, confirmed with the user: a category's demand score in a
-// city is its search count over a rolling 30-day window, and the top 5
+// city is its search count over a rolling 30-day window, and the top 6
 // categories by that score are "featured" for that city.
 export const DEMAND_WINDOW_DAYS = 30;
-export const FEATURED_LIMIT = 5;
+export const FEATURED_LIMIT = 6;
+
+// The starting featured lineup for a city with no search history yet (a
+// brand-new market, or no location set at all) -- confirmed with the user:
+// Plumbing, HVAC, Electrician, Locksmith, and Handyman by name, plus House
+// Cleaning as the sixth (one of the most universally-searched home services,
+// and -- like the other five -- already backed by a real photo). This is
+// deliberately a STARTING point, not a fixed list: getFeaturedCategoriesForCity
+// above is what actually decides the 6 featured slots once a city has real
+// search activity, so as customers search other categories more than one of
+// these, that category naturally displaces it from the featured section --
+// nothing here needs to change for that to happen. Every category not in
+// this list, or not currently trending, stays fully searchable everywhere
+// else (search, the full category directory) and fully selectable by
+// providers during setup -- this list only ever affects what the home
+// page's featured section shows a customer with no local demand history.
+export const DEFAULT_FEATURED_CATEGORY_IDS = ['plumbing', 'hvac', 'electrician', 'locksmith', 'handyman', 'home-cleaning'];
 
 /**
  * Logs one "this category was searched for in this city" event. Called for
@@ -85,6 +101,42 @@ export async function getFeaturedCategoriesForCity(city, { limit = FEATURED_LIMI
   }));
   featuredCache.set(city, { expiresAt: Date.now() + CACHE_TTL_MS, categories });
   return categories;
+}
+
+/**
+ * The default/fallback featured set (DEFAULT_FEATURED_CATEGORY_IDS above),
+ * resolved against the live categories table and returned in that exact
+ * order -- used by category.routes.js's /featured endpoint whenever a city
+ * has no real search-demand history yet. Looks up by slug (the stable,
+ * human-readable category id from categories.data.js) rather than the
+ * catalog's sort_order, so this list is completely independent of wherever
+ * these categories happen to live in the catalog file or its groups.
+ */
+export async function getDefaultFeaturedCategories({ limit = FEATURED_LIMIT } = {}) {
+  const ids = DEFAULT_FEATURED_CATEGORY_IDS.slice(0, limit);
+  const { rows } = await query(
+    `SELECT c.id, c.slug, c.name, c.icon, c.description, c.image_url, c.keywords,
+            g.slug AS group_slug, g.name AS group_name
+       FROM categories c
+       LEFT JOIN category_groups g ON g.id = c.group_id
+      WHERE c.slug = ANY($1::text[]) AND c.is_active = true`,
+    [ids]
+  );
+  const bySlug = new Map(rows.map((r) => [r.slug, r]));
+  return ids
+    .map((slug) => bySlug.get(slug))
+    .filter(Boolean)
+    .map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      icon: r.icon,
+      description: r.description,
+      imageUrl: r.image_url,
+      keywords: r.keywords,
+      group: r.group_slug ? { slug: r.group_slug, name: r.group_name } : null,
+      searchCount: null,
+    }));
 }
 
 /**

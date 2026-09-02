@@ -2,16 +2,19 @@ import { Router } from 'express';
 import { query } from '../lib/db.js';
 import { asyncHandler } from '../lib/errors.js';
 import { searchCategories, listCategoryGroupsWithCategories } from '../services/category.service.js';
-import { getFeaturedCategoriesForCity, FEATURED_LIMIT } from '../services/category-demand.service.js';
+import { getFeaturedCategoriesForCity, getDefaultFeaturedCategories } from '../services/category-demand.service.js';
 
 const router = Router();
 
 // Real per-city "trending" categories, ranked by actual local search demand
 // over a rolling window (category-demand.service.js) — not a static list.
 // A city with no search history yet (a brand-new market, or no ?city= at
-// all) returns the same default ordering the rest of the app already uses
-// for "no personalization available" rather than an empty/fake result, so
-// the home page always has something reasonable to show.
+// all) gets the confirmed starting lineup (DEFAULT_FEATURED_CATEGORY_IDS)
+// rather than an empty/fake result, so the home page always has something
+// reasonable to show. Either way this is ONLY what the home page's featured
+// section shows — every category, featured or not, stays fully searchable
+// (the / and /groups routes below) and fully selectable by providers during
+// setup (CategoryPicker.jsx, which also just calls /groups).
 router.get(
   '/featured',
   asyncHandler(async (req, res) => {
@@ -19,18 +22,7 @@ router.get(
     let categories = city ? await getFeaturedCategoriesForCity(city) : [];
     let isDemandDriven = categories.length > 0;
     if (!isDemandDriven) {
-      const rows = await searchCategories(undefined, { limit: FEATURED_LIMIT });
-      categories = rows.map((r) => ({
-        id: r.id,
-        slug: r.slug,
-        name: r.name,
-        icon: r.icon,
-        description: r.description,
-        imageUrl: r.image_url,
-        keywords: r.keywords,
-        group: r.group_slug ? { slug: r.group_slug, name: r.group_name } : null,
-        searchCount: null,
-      }));
+      categories = await getDefaultFeaturedCategories();
     }
     res.json({ categories, city, isDemandDriven });
   })

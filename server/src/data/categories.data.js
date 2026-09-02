@@ -40,10 +40,10 @@ export const CATEGORY_GROUPS = [
 // see file header. Add `image: 'https://...'` per category once sourced.
 export const CATEGORIES = [
   // ---- Home Services -------------------------------------------------
-  cat('handyman', 'Handyman', 'home-services', 'General home repairs and small fix-it jobs.', ['handy man', 'odd jobs', 'general repairs', 'fix it']),
+  catImg('handyman', 'Handyman', 'home-services', 'General home repairs and small fix-it jobs.', ['handy man', 'odd jobs', 'general repairs', 'fix it'], 'handyman'),
   catImg('plumbing', 'Plumbing', 'home-services', 'Leaks, drains, fixtures, and water heater service.', ['plumber', 'leak repair', 'drain cleaning', 'pipe repair', 'water heater', 'toilet', 'clogged', 'clog', 'leaking', 'leaky', 'faucet', 'sink', 'drain', 'pipe burst', 'no hot water'], 'plumbing'),
   catImg('electrician', 'Electrician', 'home-services', 'Wiring, outlets, panels, and lighting installation.', ['electrical', 'electrical repair', 'outlet installation', 'panel upgrade', 'wiring', 'power outage', 'breaker tripping', 'outlet not working', 'light not working', 'sparking'], 'electrician'),
-  cat('hvac', 'HVAC', 'home-services', 'Heating, ventilation, and air conditioning service.', ['air conditioning', 'ac repair', 'furnace repair', 'heating repair', 'hvac repair', 'ac not cooling', 'no heat', 'thermostat', 'air conditioner broken']),
+  catImg('hvac', 'HVAC', 'home-services', 'Heating, ventilation, and air conditioning service.', ['air conditioning', 'ac repair', 'furnace repair', 'heating repair', 'hvac repair', 'ac not cooling', 'no heat', 'thermostat', 'air conditioner broken'], 'hvac'),
   cat('appliance-repair', 'Appliance Repair', 'home-services', 'Repair for major home appliances.', ['fridge repair', 'washer repair', 'dryer repair', 'dishwasher repair', 'oven repair', 'refrigerator', 'washing machine', 'dryer not drying', 'dishwasher not draining']),
   catImg('home-cleaning', 'House Cleaning', 'home-services', 'Standard residential cleaning.', ['house cleaner', 'maid service', 'cleaning service', 'home cleaner'], 'house-cleaning'),
   cat('deep-cleaning', 'Deep Cleaning', 'home-services', 'Intensive top-to-bottom cleaning.', ['deep clean', 'move-out cleaning', 'move-in cleaning', 'spring cleaning']),
