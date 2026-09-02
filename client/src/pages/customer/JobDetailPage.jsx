@@ -117,7 +117,7 @@ export default function JobDetailPage() {
         )}
       </div>
 
-      {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} />}
+      {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} redirectTo="/jobs" />}
 
       {invoice && (
         <a href={invoice.pdf_path} target="_blank" rel="noreferrer" className="block rounded-xl border border-ink-900/10 bg-white p-4 text-sm hover:border-ember-300">

@@ -124,6 +124,15 @@ webhookRouter.post('/', express.raw({ type: 'application/json' }), async (req, r
         if (kind === 'boost_subscription') await SubscriptionService.handleSubscriptionEvent('boost', sub);
         break;
       }
+      case 'invoice.paid': {
+        // Every successful subscription charge (the first one and every
+        // renewal) -- feeds the admin analytics revenue-by-source/by-time
+        // breakdown. See subscription.service.js's recordInvoicePaid() and
+        // migration 007 for why this can't just be read off `subscriptions`/
+        // `boosts` directly.
+        await SubscriptionService.recordInvoicePaid(event.data.object);
+        break;
+      }
       default:
         break; // ignore event types we don't act on
     }

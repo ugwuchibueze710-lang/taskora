@@ -76,7 +76,7 @@ export default function ProviderJobDetailPage() {
         )}
       </div>
 
-      {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} />}
+      {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} redirectTo="/provider/jobs" />}
 
       {job.status === 'provider_marked_complete' && (
         <p className="text-sm text-ink-700/60">Waiting for the customer to confirm completion — your payout releases automatically once they do.</p>

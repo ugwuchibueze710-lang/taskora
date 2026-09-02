@@ -245,8 +245,30 @@ router.get(
   '/disputes',
   asyncHandler(async (req, res) => {
     const status = req.query.status?.toString();
+    // A dispute is always tied to one job, which has exactly one customer
+    // and one provider -- so "was the reporter acting as the customer or
+    // the provider on THIS job" (and the same for who they're reporting) is
+    // always derivable from the job itself, never ambiguous, and never both
+    // parties being the same role (a customer can never dispute another
+    // customer, a provider never another provider -- there's no such thing
+    // as a job with two customers or two providers to report). This is why
+    // dispute.routes.js's `isCustomer ? job.provider_user_id : job.customer_id`
+    // was already correct; this view just surfaces that context to admins.
     const { rows } = await query(
-      status ? 'SELECT * FROM disputes WHERE status = $1 ORDER BY created_at DESC' : 'SELECT * FROM disputes ORDER BY created_at DESC',
+      `SELECT d.*,
+              j.customer_id AS job_customer_id, j.service_description, j.status AS job_status,
+              ru.first_name AS reporter_first_name, ru.last_name AS reporter_last_name, ru.email AS reporter_email,
+              CASE WHEN d.raised_by_user_id = j.customer_id THEN 'customer' ELSE 'provider' END AS reporter_role,
+              au.first_name AS reportee_first_name, au.last_name AS reportee_last_name, au.email AS reportee_email,
+              CASE WHEN d.against_user_id = j.customer_id THEN 'customer'
+                   WHEN d.against_user_id IS NOT NULL THEN 'provider'
+                   ELSE NULL END AS reportee_role
+         FROM disputes d
+         JOIN jobs j ON j.id = d.job_id
+         JOIN users ru ON ru.id = d.raised_by_user_id
+         LEFT JOIN users au ON au.id = d.against_user_id
+        ${status ? 'WHERE d.status = $1' : ''}
+        ORDER BY d.created_at DESC`,
       status ? [status] : []
     );
     res.json({ disputes: rows });
@@ -359,28 +381,146 @@ router.get(
   })
 );
 
+// ---- Support inbox (general "Contact Taskora" messages -- see
+// support.routes.js) -- distinct from Disputes below, which are job-scoped
+// reports requiring an active/completed job with a specific provider.
+// ----
+router.get(
+  '/support/threads',
+  asyncHandler(async (req, res) => {
+    // One row per user who has ever messaged support, with their most recent
+    // message and an unread-from-user count, newest activity first -- an
+    // inbox list, not a flat message dump.
+    const { rows } = await query(
+      `SELECT u.id AS user_id, u.first_name, u.last_name, u.email, u.current_mode,
+              (SELECT body FROM support_messages sm2 WHERE sm2.user_id = u.id ORDER BY sm2.created_at DESC LIMIT 1) AS last_message,
+              (SELECT created_at FROM support_messages sm3 WHERE sm3.user_id = u.id ORDER BY sm3.created_at DESC LIMIT 1) AS last_message_at,
+              (SELECT count(*)::int FROM support_messages sm4 WHERE sm4.user_id = u.id AND sm4.sender = 'user' AND sm4.read_at IS NULL) AS unread_count
+         FROM users u
+        WHERE EXISTS (SELECT 1 FROM support_messages sm WHERE sm.user_id = u.id)
+        ORDER BY last_message_at DESC`
+    );
+    res.json({ threads: rows });
+  })
+);
+
+router.get(
+  '/support/threads/:userId',
+  asyncHandler(async (req, res) => {
+    const { rows: userRows } = await query('SELECT id, first_name, last_name, email FROM users WHERE id = $1', [req.params.userId]);
+    if (!userRows[0]) throw notFound('User not found.');
+    const { rows: messages } = await query(
+      'SELECT * FROM support_messages WHERE user_id = $1 ORDER BY created_at ASC',
+      [req.params.userId]
+    );
+    res.json({ user: userRows[0], messages });
+  })
+);
+
+router.post(
+  '/support/threads/:userId/reply',
+  validateBody(z.object({ body: z.string().trim().min(1).max(3000) })),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `INSERT INTO support_messages (user_id, sender, body) VALUES ($1, 'admin', $2) RETURNING *`,
+      [req.params.userId, req.body.body]
+    );
+    await notify(req.params.userId, {
+      type: 'support_reply',
+      title: 'Taskora Support replied',
+      body: req.body.body.slice(0, 140),
+      data: {},
+    });
+    await logAdminAction({ adminUserId: req.user.id, actionType: 'support_reply', targetType: 'user', targetId: req.params.userId });
+    res.status(201).json({ message: rows[0] });
+  })
+);
+
 // ---- Analytics ----
+// Revenue has two genuinely different sources, tracked in two different
+// tables (see migration 007's comment for why): job-commission money comes
+// straight from `payments` (the real, existing per-job ledger), while
+// Pro-monthly / Pro-yearly / Boost income comes from `revenue_events` (a new
+// ledger populated by the `invoice.paid` webhook going forward -- it has no
+// pre-migration history to backfill from). Both are combined here so the
+// admin gets one honest "how much did we actually make" answer, broken out
+// by source and, optionally, by day or month.
+const REVENUE_UNION_SQL = `
+  SELECT created_at AS occurred_at, 'commission' AS source, platform_fee AS amount FROM payments WHERE status = 'succeeded'
+  UNION ALL
+  SELECT occurred_at, source, amount FROM revenue_events
+`;
+
 router.get(
   '/analytics',
   asyncHandler(async (req, res) => {
-    const [users, providers, jobs, completedJobs, revenue, activeProviders, searches] = await Promise.all([
+    const granularity = req.query.granularity === 'month' ? 'month' : 'day';
+    const periods = Math.min(Number(req.query.periods) || (granularity === 'month' ? 12 : 30), 366);
+    const since = new Date();
+    if (granularity === 'month') since.setMonth(since.getMonth() - (periods - 1));
+    else since.setDate(since.getDate() - (periods - 1));
+
+    const [users, providers, jobs, completedJobs, activeProviders, searches, lifetimeBySource, seriesRows, gmv] = await Promise.all([
       query('SELECT count(*) FROM users'),
       query('SELECT count(*) FROM providers'),
       query('SELECT count(*) FROM jobs'),
       query("SELECT count(*) FROM jobs WHERE status = 'completed'"),
-      query("SELECT COALESCE(sum(platform_fee), 0) AS platform_revenue, COALESCE(sum(amount_total), 0) AS gmv FROM payments WHERE status = 'succeeded'"),
       query("SELECT count(*) FROM providers WHERE status = 'active'"),
       query('SELECT count(*) FROM search_history'),
+      query(`SELECT source, COALESCE(sum(amount), 0) AS amount FROM (${REVENUE_UNION_SQL}) c GROUP BY source`),
+      query(
+        `SELECT date_trunc($1, occurred_at) AS period, source, COALESCE(sum(amount), 0) AS amount
+           FROM (${REVENUE_UNION_SQL}) c
+          WHERE occurred_at >= $2
+          GROUP BY 1, 2
+          ORDER BY 1`,
+        [granularity, since]
+      ),
+      query("SELECT COALESCE(sum(amount_total), 0) AS gmv FROM payments WHERE status = 'succeeded'"),
     ]);
+
+    const bySource = { commission: 0, pro_monthly: 0, pro_yearly: 0, boost: 0 };
+    for (const r of lifetimeBySource.rows) bySource[r.source] = Number(r.amount);
+    const platformRevenue = bySource.commission; // kept for backward compat with any existing callers
+
+    // Build a dense period map (zero-filled) so a quiet day/month still shows
+    // up as $0 rather than silently disappearing from the series.
+    const periodMap = new Map();
+    const cursor = new Date(since);
+    for (let i = 0; i < periods; i++) {
+      const key = granularity === 'month' ? cursor.toISOString().slice(0, 7) : cursor.toISOString().slice(0, 10);
+      periodMap.set(key, { period: key, commission: 0, pro_monthly: 0, pro_yearly: 0, boost: 0 });
+      if (granularity === 'month') cursor.setMonth(cursor.getMonth() + 1);
+      else cursor.setDate(cursor.getDate() + 1);
+    }
+    for (const r of seriesRows.rows) {
+      const key = granularity === 'month' ? r.period.toISOString().slice(0, 7) : r.period.toISOString().slice(0, 10);
+      const entry = periodMap.get(key);
+      if (entry) entry[r.source] = Number(r.amount);
+    }
+    const revenueSeries = Array.from(periodMap.values()).map((p) => ({
+      ...p,
+      total: p.commission + p.pro_monthly + p.pro_yearly + p.boost,
+    }));
+
     res.json({
       totalUsers: Number(users.rows[0].count),
       totalProviders: Number(providers.rows[0].count),
       activeProviders: Number(activeProviders.rows[0].count),
       totalJobs: Number(jobs.rows[0].count),
       completedJobs: Number(completedJobs.rows[0].count),
-      platformRevenue: Number(revenue.rows[0].platform_revenue),
-      grossMerchandiseValue: Number(revenue.rows[0].gmv),
+      platformRevenue,
+      grossMerchandiseValue: Number(gmv.rows[0].gmv),
       totalSearches: Number(searches.rows[0].count),
+      revenueBreakdown: {
+        platformCommission: bySource.commission,
+        proMonthly: bySource.pro_monthly,
+        proYearly: bySource.pro_yearly,
+        boost: bySource.boost,
+        total: bySource.commission + bySource.pro_monthly + bySource.pro_yearly + bySource.boost,
+      },
+      revenueSeries,
+      granularity,
     });
   })
 );

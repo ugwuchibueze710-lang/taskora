@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client.js';
 
 const REASONS = [
@@ -10,11 +11,15 @@ const REASONS = [
   ['other', 'Other'],
 ];
 
-export default function DisputeForm({ jobId, onDone }) {
+// `redirectTo`: where to send the reporter once the report is actually sent
+// (not just closing the inline form) -- their jobs list by default, with a
+// query flag the destination page can use to show a confirmation notice.
+export default function DisputeForm({ jobId, onDone, redirectTo = '/jobs' }) {
   const [reason, setReason] = useState('not_completed');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
@@ -22,7 +27,8 @@ export default function DisputeForm({ jobId, onDone }) {
     setError('');
     try {
       await api.post('/disputes', { jobId, reason, description: description || undefined });
-      onDone();
+      onDone?.();
+      navigate(`${redirectTo}?reported=1`);
     } catch (err) {
       setError(err.message);
     } finally {

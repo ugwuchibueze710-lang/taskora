@@ -29,6 +29,7 @@ import favoriteRoutes from './routes/favorite.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import subscriptionRoutes from './routes/subscription.routes.js';
 import disputeRoutes from './routes/dispute.routes.js';
+import supportRoutes from './routes/support.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -99,6 +100,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/disputes', disputeRoutes);
+app.use('/api/support', supportRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Serve the built client in production (single-service Render deploy).

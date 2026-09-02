@@ -114,6 +114,44 @@ export async function handleSubscriptionEvent(type, subscription) {
   }
 }
 
+// Records one paid subscription invoice (a monthly or yearly renewal, or the
+// very first charge) as a revenue event -- see migration 007 for why this
+// exists separately from the `subscriptions`/`boosts` tables. Called from
+// the `invoice.paid` webhook. Safe to call for an invoice that isn't one of
+// ours (returns without writing anything) and safe to call twice for the
+// same invoice (unique constraint on stripe_invoice_id no-ops the repeat) --
+// though the webhook's outer event-id dedup already prevents that in
+// practice.
+export async function recordInvoicePaid(invoice) {
+  const stripeSubscriptionId = invoice.subscription;
+  if (!stripeSubscriptionId) return; // one-off invoice, not a subscription renewal
+
+  let type = null;
+  let row = null;
+  const proRow = await query('SELECT * FROM subscriptions WHERE stripe_subscription_id = $1', [stripeSubscriptionId]);
+  if (proRow.rows[0]) {
+    type = 'pro';
+    row = proRow.rows[0];
+  } else {
+    const boostRow = await query('SELECT * FROM boosts WHERE stripe_subscription_id = $1', [stripeSubscriptionId]);
+    if (boostRow.rows[0]) {
+      type = 'boost';
+      row = boostRow.rows[0];
+    }
+  }
+  if (!type) return; // not a subscription this app manages -- never guess
+
+  const source = type === 'boost' ? 'boost' : row.billing_interval === 'year' ? 'pro_yearly' : 'pro_monthly';
+  const amount = (invoice.amount_paid || 0) / 100; // Stripe amounts are in cents
+
+  await query(
+    `INSERT INTO revenue_events (source, provider_id, amount, stripe_invoice_id, occurred_at)
+     VALUES ($1, $2, $3, $4, to_timestamp($5))
+     ON CONFLICT (stripe_invoice_id) DO NOTHING`,
+    [source, row.provider_id, amount, invoice.id, invoice.created]
+  );
+}
+
 export async function getStatus(providerId) {
   const [pro, boost] = await Promise.all([
     query('SELECT * FROM subscriptions WHERE provider_id = $1 ORDER BY created_at DESC LIMIT 1', [providerId]),

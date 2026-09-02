@@ -90,7 +90,13 @@ export default function Nav() {
                 : [
                     ['/notifications', 'Notifications'], ['/settings', 'Settings'],
                   ]
-              ).map(([to, label]) => (
+              )
+                // Available in both modes, always -- general customer-service
+                // contact is separate from mode-specific settings/dashboard
+                // links above, and from the job-scoped "Report a problem"
+                // flow on a specific job's detail page.
+                .concat([['/support', '💬 Contact Support']])
+                .map(([to, label]) => (
                 <Link key={to} to={to} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-ink-900/5">
                   {label}
                 </Link>

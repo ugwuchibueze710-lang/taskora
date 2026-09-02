@@ -5,6 +5,7 @@ import { RequireAuth, RequireAdmin, RequireGuest } from './components/ProtectedR
 import LoginPage from './pages/auth/LoginPage.jsx';
 import SignupPage from './pages/auth/SignupPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
+import SupportPage from './pages/SupportPage.jsx';
 
 import HomePage from './pages/customer/HomePage.jsx';
 import CategoryDirectoryPage from './pages/customer/CategoryDirectoryPage.jsx';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/support" element={<SupportPage />} />
         <Route path="/settings" element={<SettingsPage />} />
 
         <Route path="/provider/onboarding" element={<OnboardingWizardPage />} />

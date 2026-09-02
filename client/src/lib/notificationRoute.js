@@ -56,6 +56,9 @@ export function notificationRoute(notification, currentMode) {
     case 'boost_status':
       return '/provider/boost';
 
+    case 'support_reply':
+      return '/support';
+
     default:
       return null;
   }
