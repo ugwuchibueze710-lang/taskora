@@ -32,7 +32,7 @@ export default function LoginPage() {
         </div>
         <form onSubmit={submit} className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card space-y-3">
           <h2 className="font-display text-xl mb-1">Welcome back</h2>
-          <input required type="email" placeholder="Email" value={form.email}
+          <input required type="text" placeholder="Email" value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400" />
           <input required type="password" placeholder="Password" value={form.password}
