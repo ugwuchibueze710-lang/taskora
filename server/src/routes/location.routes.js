@@ -40,15 +40,22 @@ router.post(
       label: z.string().min(1).max(200),
       lat: z.number(),
       lng: z.number(),
+      // Comes from the same Mapbox result the client already fetched via
+      // /location/search or /location/reverse (see mapbox.service.js's
+      // extractCity) — trusted the same way label/lat/lng already are.
+      // Optional/nullable: a small share of real geocoding results genuinely
+      // have no resolvable city (rural addresses), and per-city demand
+      // tracking just skips those rather than inventing a value.
+      city: z.string().max(120).nullable().optional(),
     })
   ),
   asyncHandler(async (req, res) => {
-    const { label, lat, lng } = req.body;
+    const { label, lat, lng, city = null } = req.body;
     await query(
-      `UPDATE profiles SET location_label = $1, location_lat = $2, location_lng = $3, updated_at = now() WHERE user_id = $4`,
-      [label, lat, lng, req.user.id]
+      `UPDATE profiles SET location_label = $1, location_lat = $2, location_lng = $3, location_city = $4, updated_at = now() WHERE user_id = $5`,
+      [label, lat, lng, city, req.user.id]
     );
-    res.json({ location: { label, lat, lng } });
+    res.json({ location: { label, lat, lng, city } });
   })
 );
 

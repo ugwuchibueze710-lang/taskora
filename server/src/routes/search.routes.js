@@ -5,6 +5,7 @@ import { asyncHandler } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { requireAuth, attachUserIfPresent } from '../middleware/auth.js';
 import { searchProviders } from '../services/search.service.js';
+import { recordCategorySearch } from '../services/category-demand.service.js';
 
 const router = Router();
 
@@ -18,6 +19,11 @@ const searchSchema = z.object({
   limit: z.number().int().min(1).max(50).default(20),
   offset: z.number().int().min(0).default(0),
   rawQuery: z.string().max(300).optional(),
+  // The customer's locked-location city, sent by the client from the same
+  // Mapbox result already used for lat/lng (see LocationContext.jsx) — only
+  // used for local demand tracking (category-demand.service.js), never for
+  // matching/ranking, so it's fine for this to be absent.
+  city: z.string().max(120).optional(),
 });
 
 router.post(
@@ -25,7 +31,7 @@ router.post(
   attachUserIfPresent,
   validateBody(searchSchema),
   asyncHandler(async (req, res) => {
-    const { rawQuery, ...filters } = req.body;
+    const { rawQuery, city, ...filters } = req.body;
     const result = await searchProviders(filters);
 
     if (req.user && rawQuery) {
@@ -33,6 +39,12 @@ router.post(
         `INSERT INTO search_history (user_id, query_text, parsed_filters, result_count) VALUES ($1, $2, $3, $4)`,
         [req.user.id, rawQuery, JSON.stringify(filters), result.total]
       );
+    }
+    // Demand counts an explicit category browse (any logged-in or anonymous
+    // customer picking a category), not a bare keyword search with no
+    // resolved category — the rule confirmed for this feature.
+    if (filters.categoryId) {
+      await recordCategorySearch({ categoryId: filters.categoryId, city });
     }
 
     res.json(result);

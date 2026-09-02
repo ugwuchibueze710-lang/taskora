@@ -12,7 +12,7 @@ export async function requireAuth(req, res, next) {
     if (!userId) return next(unauthorized('Please log in to continue.'));
     const { rows } = await query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.current_mode, u.status, u.created_at,
-              p.avatar_url, p.location_label, p.location_lat, p.location_lng,
+              p.avatar_url, p.location_label, p.location_lat, p.location_lng, p.location_city,
               pr.id AS provider_id, pr.status AS provider_status
          FROM users u
          LEFT JOIN profiles p ON p.user_id = u.id
@@ -48,7 +48,7 @@ export async function attachUserIfPresent(req, res, next) {
     if (!userId) return next();
     const { rows } = await query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.current_mode, u.status,
-              p.location_lat, p.location_lng, p.location_label,
+              p.location_lat, p.location_lng, p.location_label, p.location_city,
               pr.id AS provider_id
          FROM users u
          LEFT JOIN profiles p ON p.user_id = u.id

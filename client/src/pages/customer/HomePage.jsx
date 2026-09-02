@@ -6,7 +6,6 @@ import Spinner from '../../components/Spinner.jsx';
 import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
-const POPULAR_LIMIT = 12;
 const PER_GROUP_LIMIT = 8;
 
 export default function HomePage() {
@@ -16,6 +15,8 @@ export default function HomePage() {
   const [history, setHistory] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [featured, setFeatured] = useState([]);
+  const [featuredIsDemandDriven, setFeaturedIsDemandDriven] = useState(false);
   const { locked, location } = useTaskoraLocation();
   const navigate = useNavigate();
 
@@ -25,8 +26,21 @@ export default function HomePage() {
     api.get('/search/history').then(({ data }) => setHistory(data.history)).catch(() => {});
   }, [user.current_mode]);
 
-  const allCategories = useMemo(() => groups.flatMap((g) => g.categories), [groups]);
-  const popular = useMemo(() => allCategories.slice(0, POPULAR_LIMIT), [allCategories]);
+  // Real per-city "trending" categories (category-demand.service.js on the
+  // server), not a hardcoded list — a city with no search history yet, or
+  // no location locked at all, gets the server's own sensible default
+  // ordering back (isDemandDriven: false) rather than an empty section.
+  useEffect(() => {
+    if (user.current_mode === 'provider') return;
+    api
+      .get('/categories/featured', { params: location?.city ? { city: location.city } : {} })
+      .then(({ data }) => {
+        setFeatured(data.categories);
+        setFeaturedIsDemandDriven(data.isDemandDriven);
+      })
+      .catch(() => {});
+  }, [user.current_mode, location?.city]);
+
 
   const q = categoryQuery.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
@@ -120,11 +134,13 @@ export default function HomePage() {
           <div className="flex justify-center py-8"><Spinner size={24} /></div>
         )}
 
-        {!q && popular.length > 0 && (
+        {!q && featured.length > 0 && (
           <div className="mb-8">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">Popular right now</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">
+              {featuredIsDemandDriven && location?.city ? `Trending in ${location.city}` : 'Popular right now'}
+            </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {popular.map((c) => (
+              {featured.map((c) => (
                 <CategoryCard key={c.id} category={c} />
               ))}
             </div>

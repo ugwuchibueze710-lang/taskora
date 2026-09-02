@@ -8,6 +8,8 @@ import { logAdminAction } from '../services/audit.service.js';
 import { refundPayment } from '../services/payment.service.js';
 import { transitionJob, notifyJobParties } from '../services/job.service.js';
 import { notify } from '../services/notification.service.js';
+import { computeProviderTier, TIER_LABEL, freeDistributionEndsAt } from '../services/provider-tier.service.js';
+import { getCategoryDemandOverview } from '../services/category-demand.service.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -71,11 +73,25 @@ router.get(
       params.push(`%${q.toLowerCase()}%`);
       where = `WHERE lower(coalesce(business_name,'') || ' ' || coalesce(display_name,'')) LIKE $1`;
     }
+    // has_active_pro mirrors the exact EXISTS subquery search.service.js uses
+    // for ranking — real, current Stripe-driven subscription state, not just
+    // the denormalized is_pro flag — so this view can never show a provider
+    // as "priority" when they wouldn't actually rank as one.
     const { rows } = await query(
-      `SELECT p.*, u.email, u.first_name, u.last_name FROM providers p JOIN users u ON u.id = p.user_id ${where} ORDER BY p.created_at DESC LIMIT 200`,
+      `SELECT p.*, u.email, u.first_name, u.last_name,
+              EXISTS (
+                SELECT 1 FROM subscriptions sub
+                 WHERE sub.provider_id = p.id AND sub.status = 'active'
+                   AND (sub.current_period_end IS NULL OR sub.current_period_end > now())
+              ) AS has_active_pro
+         FROM providers p JOIN users u ON u.id = p.user_id ${where} ORDER BY p.created_at DESC LIMIT 200`,
       params
     );
-    res.json({ providers: rows });
+    const providers = rows.map((p) => {
+      const tier = computeProviderTier(p);
+      return { ...p, tier: TIER_LABEL[tier], freeDistributionEndsAt: freeDistributionEndsAt(p.published_at) };
+    });
+    res.json({ providers });
   })
 );
 
@@ -312,11 +328,34 @@ router.post(
 router.get(
   '/subscriptions',
   asyncHandler(async (req, res) => {
+    // Extended (not replaced) with the provider's name so this list is
+    // actually readable without cross-referencing /admin/providers by id.
     const [pro, boost] = await Promise.all([
-      query('SELECT * FROM subscriptions ORDER BY created_at DESC LIMIT 200'),
-      query('SELECT * FROM boosts ORDER BY created_at DESC LIMIT 200'),
+      query(
+        `SELECT s.*, COALESCE(p.business_name, p.display_name) AS provider_name
+           FROM subscriptions s JOIN providers p ON p.id = s.provider_id
+          ORDER BY s.created_at DESC LIMIT 200`
+      ),
+      query(
+        `SELECT b.*, COALESCE(p.business_name, p.display_name) AS provider_name
+           FROM boosts b JOIN providers p ON p.id = b.provider_id
+          ORDER BY b.created_at DESC LIMIT 200`
+      ),
     ]);
     res.json({ pro: pro.rows, boost: boost.rows });
+  })
+);
+
+// ---- Category demand (per-city featured-category system) ----
+// Read-only view over category-demand.service.js's real search-event data —
+// the same rolling window and source of truth the home page's featured
+// section uses, never a separate/duplicated computation.
+router.get(
+  '/category-demand',
+  asyncHandler(async (req, res) => {
+    const windowDays = Number(req.query.windowDays) || undefined;
+    const cities = await getCategoryDemandOverview(windowDays ? { windowDays } : {});
+    res.json({ cities });
   })
 );
 

@@ -8,6 +8,7 @@ import { parseSearchIntent, chatCompletion, groqConfigured } from '../services/g
 import { searchProviders } from '../services/search.service.js';
 import { TOOLS, executeTool } from '../services/ai-actions.service.js';
 import { resolveCategoryByText } from '../services/category.service.js';
+import { recordCategorySearch } from '../services/category-demand.service.js';
 
 const router = Router();
 
@@ -28,6 +29,10 @@ router.post(
 
     let lat = req.user?.location_lat ?? null;
     let lng = req.user?.location_lng ?? null;
+    // Defaults to the customer's locked-location city; overridden below if
+    // the query names a different place ("plumbers in Owensboro" while
+    // physically in Louisville should count as Owensboro demand).
+    let city = req.user?.location_city ?? null;
     if (intent.locationText) {
       const { geocode } = await import('../services/mapbox.service.js');
       try {
@@ -35,6 +40,7 @@ router.post(
         if (matches[0]) {
           lat = matches[0].lat;
           lng = matches[0].lng;
+          city = matches[0].city ?? city;
         }
       } catch {
         // Location mentioned but Mapbox unavailable/unconfigured — fall back to the user's locked location.
@@ -58,6 +64,13 @@ router.post(
         JSON.stringify({ ...filters, intent }),
         result.total,
       ]);
+    }
+    // A Smart Search query that resolved to a real category counts toward
+    // that category's local demand exactly like an explicit browse does
+    // (see search.routes.js) — a free-text query Groq couldn't map to any
+    // category (categoryId stays null) does not.
+    if (categoryId) {
+      await recordCategorySearch({ categoryId, city });
     }
 
     res.json({ ...result, interpreted: intent, aiPowered: groqConfigured() });

@@ -3,6 +3,23 @@ import { badRequest } from '../lib/errors.js';
 const MAPBOX_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 
 /**
+ * Pulls a clean city name out of a Mapbox geocoding feature, for per-city
+ * demand tracking (see category-demand.service.js). Mapbox represents a
+ * "place" (city/town) either as the feature itself (when someone searches
+ * a city directly, e.g. "Evansville, IN") or as one entry in the feature's
+ * `context` array (when the result is a more specific address/postcode
+ * inside that city) — this checks both instead of relying on `place_name`,
+ * which is a full formatted string ("123 Main St, Evansville, IN, USA")
+ * that's wrong to use as a city key directly.
+ */
+function extractCity(feature) {
+  if (!feature) return null;
+  if (feature.place_type?.includes('place')) return feature.text || null;
+  const placeContext = (feature.context || []).find((c) => c.id?.startsWith('place.'));
+  return placeContext?.text || null;
+}
+
+/**
  * Forward-geocode a free-text place/address into candidate locations.
  * Returns [] (never throws for "no results") so callers can show a clean
  * empty state instead of a crash. Throws only on missing configuration or
@@ -33,6 +50,7 @@ export async function geocode(placeText, { limit = 5, proximity = null } = {}) {
     label: f.place_name,
     lng: f.center[0],
     lat: f.center[1],
+    city: extractCity(f),
   }));
 }
 
@@ -62,7 +80,12 @@ export async function reverseGeocode(lat, lng) {
   }
   const data = await resp.json();
   const best = (data.features || [])[0];
-  return { label: best ? best.place_name : `${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng };
+  return {
+    label: best ? best.place_name : `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    lat,
+    lng,
+    city: best ? extractCity(best) : null,
+  };
 }
 
 /** Great-circle distance in miles between two lat/lng points. */

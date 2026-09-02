@@ -35,6 +35,7 @@ export default function SearchResultsPage() {
             categoryId: categoryId ? Number(categoryId) : undefined,
             lat: location?.lat,
             lng: location?.lng,
+            city: location?.city || undefined,
           });
           if (!cancelled) {
             setResults(data.results);
