@@ -42,6 +42,41 @@ router.get(
   })
 );
 
+// ---- The other participant's identity for this conversation, for the
+// conversation header and the in-app Call button (client/src/components/
+// ConversationThread.jsx) -- works identically for whichever side (customer
+// or provider) is asking. ----
+router.get(
+  '/conversations/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { conv, role } = await loadConversationForUser(req.params.id, req.user);
+    if (role === 'customer') {
+      const { rows } = await query(
+        `SELECT pr.user_id, COALESCE(NULLIF(pr.business_name, ''), pr.display_name) AS name, pr.image_url AS avatar_url
+           FROM providers pr WHERE pr.id = $1`,
+        [conv.provider_id]
+      );
+      const other = rows[0];
+      return res.json({ conversation: { id: conv.id, role, other: other && { userId: other.user_id, name: other.name, avatarUrl: other.avatar_url } } });
+    }
+    const { rows } = await query(
+      `SELECT u.id AS user_id, u.first_name, u.last_name, p.avatar_url
+         FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE u.id = $1`,
+      [conv.customer_id]
+    );
+    const other = rows[0];
+    res.json({
+      conversation: {
+        id: conv.id,
+        role,
+        other: other && { userId: other.user_id, name: `${other.first_name} ${other.last_name || ''}`.trim(), avatarUrl: other.avatar_url },
+      },
+    });
+  })
+);
+
 router.get(
   '/conversations/:id/messages',
   requireAuth,

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useCall } from '../context/CallContext.jsx';
 import QuoteMessageCard from './QuoteMessageCard.jsx';
 import QuoteRequestCard from './QuoteRequestCard.jsx';
 import Spinner from './Spinner.jsx';
 
 export default function ConversationThread({ conversationId }) {
   const { user } = useAuth();
+  const { callState, startCall } = useCall();
   const [messages, setMessages] = useState(null);
+  const [other, setOther] = useState(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
@@ -17,8 +20,18 @@ export default function ConversationThread({ conversationId }) {
     setMessages(data.messages);
   };
 
+  const loadOther = async () => {
+    try {
+      const { data } = await api.get(`/messages/conversations/${conversationId}`);
+      setOther(data.conversation?.other || null);
+    } catch {
+      setOther(null);
+    }
+  };
+
   useEffect(() => {
     load();
+    loadOther();
     const interval = setInterval(load, 6000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,6 +58,29 @@ export default function ConversationThread({ conversationId }) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-160px)] rounded-2xl border border-ink-900/8 bg-white shadow-card overflow-hidden">
+      {other && (
+        <div className="flex items-center justify-between border-b border-ink-900/8 px-4 py-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {other.avatarUrl ? (
+              <img src={other.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900/5 text-sm font-medium text-ink-700/70">
+                {other.name?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+            <span className="truncate font-medium text-ink-900">{other.name}</span>
+          </div>
+          <button
+            onClick={() => startCall(conversationId, other.name)}
+            disabled={callState !== 'idle'}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ember-500 text-white hover:bg-ember-600 disabled:opacity-40"
+            aria-label={`Call ${other.name}`}
+            title={`Call ${other.name}`}
+          >
+            📞
+          </button>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
         {messages.map((m) => {
           const mine = m.sender_user_id === user.id;

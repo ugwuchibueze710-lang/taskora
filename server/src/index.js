@@ -1,16 +1,15 @@
 import 'dotenv/config';
 import express from 'express';
-import session from 'express-session';
-import connectPgSimple from 'connect-pg-simple';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { pool } from './lib/db.js';
 import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
+import { sessionMiddleware } from './middleware/session.js';
+import { attachCallSignaling } from './realtime/call-signaling.js';
 
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -61,22 +60,7 @@ app.use('/api/auth/signup', authLimiter);
 const aiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 15, standardHeaders: true, legacyHeaders: false });
 app.use('/api/ai', aiLimiter);
 
-const PgSession = connectPgSimple(session);
-app.use(
-  session({
-    store: new PgSession({ pool, tableName: 'session' }),
-    name: 'taskora.sid',
-    secret: process.env.SESSION_SECRET || 'insecure-dev-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    },
-  })
-);
+app.use(sessionMiddleware);
 
 app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR?.replace('./', '') || 'uploads')));
 
@@ -172,7 +156,11 @@ syncCategoryCatalog()
     console.error('Category catalog sync failed (server will still start):', err.message);
   })
   .finally(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Taskora API listening on port ${PORT}`);
     });
+    // In-app calling's signaling channel (offer/answer/ICE relay) rides the
+    // same HTTP server as a WebSocket upgrade on /ws/calls, authenticated off
+    // the same session cookie as every other route -- see realtime/call-signaling.js.
+    attachCallSignaling(server);
   });
