@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api from '../../api/client.js';
 import Spinner from '../../components/Spinner.jsx';
 import SafeImage from '../../components/SafeImage.jsx';
+import EmptyState from '../../components/EmptyState.jsx';
 
 // Side-by-side quote comparison for one posted project. This is read-only --
 // accepting/declining a quote still happens on the existing conversation
@@ -33,6 +34,14 @@ export default function ProjectDetailPage() {
       <Link to="/projects" className="text-sm text-ink-700/60 hover:text-ink-900">&larr; Your projects</Link>
       <h1 className="font-display text-2xl mt-2 mb-1">{project.category_name || 'Your project'}</h1>
       <p className="text-sm text-ink-700/70 mb-6">{project.description}</p>
+
+      {requests.length === 0 && (
+        <EmptyState
+          icon="🧭"
+          title="No providers matched in your area yet."
+          hint="No one serving your area for this category has a profile set up right now — try a broader category, or search directly instead."
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {requests.map((r) => (

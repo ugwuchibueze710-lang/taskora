@@ -32,6 +32,10 @@ export default function NewProjectPage() {
       setError('Describe what you need done.');
       return;
     }
+    if (!location) {
+      setError('Set your location (top of the page) before sending this to providers.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -100,7 +104,7 @@ export default function NewProjectPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
-          disabled={submitting}
+          disabled={submitting || !location}
           className="w-full rounded-full bg-ember-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60"
         >
           {submitting ? 'Sending to matching providers…' : 'Send to matching providers'}

@@ -25,18 +25,36 @@ const MATCH_LIMIT = 5;
  */
 export async function createProjectPost({ customerId, categoryId, description, lat, lng, locationLabel }) {
   if (!description?.trim()) throw badRequest('Describe what you need done.');
+  // A real location is required before broadcasting -- confirmed against
+  // production on a hard test: searchProviders() (unchanged, shared with
+  // plain browsing) only computes a distance -- and therefore only enforces
+  // a provider's service-area radius -- when BOTH the customer and the
+  // provider have coordinates on file. On a manual search a customer simply
+  // wouldn't click an unrelated distant result, but Instant Match messages
+  // every match automatically, so without this guard a customer with no
+  // location set (or a provider who never set a service area) could get
+  // silently matched with someone states away. Caught live: a project
+  // posted without solid coordinates matched a real, unrelated account
+  // purely because that provider profile had no service area configured.
+  if (lat == null || lng == null) {
+    throw badRequest('Set your location before posting a project, so we can match nearby providers.');
+  }
 
   const { rows } = await query(
     `INSERT INTO project_posts (customer_id, category_id, description, lat, lng, location_label)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [customerId, categoryId || null, description.trim(), lat ?? null, lng ?? null, locationLabel || null]
+    [customerId, categoryId || null, description.trim(), lat, lng, locationLabel || null]
   );
   const post = rows[0];
 
   const { results } = await searchProviders({ categoryId: categoryId || undefined, lat, lng, limit: MATCH_LIMIT });
+  // Only broadcast to providers searchProviders() could actually place a
+  // real distance on -- i.e. ones with a service area configured, which is
+  // what confirms they're within range rather than merely un-filtered.
+  const inRange = results.filter((p) => p.distanceMiles != null);
 
   const matched = [];
-  for (const provider of results) {
+  for (const provider of inRange) {
     try {
       const qr = await createQuoteRequest({
         customerId,
