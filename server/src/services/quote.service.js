@@ -100,15 +100,16 @@ export async function acceptQuote({ quoteId, customerId }) {
       throw conflict('This quote has expired.');
     }
 
-    // jobs.price is the provider's quoted service price (what they're paid in full —
-    // see computeFeeSplit). Taskora's 10% fee is a surcharge added on top of this and
-    // charged to the customer separately at checkout; it is never deducted from here.
-    const { platformFee, providerAmount } = computeFeeSplit(quote.price);
+    // jobs.price is exactly what the customer will be charged (the provider's
+    // quoted price, unchanged). Taskora's 5% fee is deducted from the
+    // provider's payout at acceptance time — see computeFeeSplit — so
+    // provider_amount is already price minus that fee, never price itself.
+    const { total, platformFee, providerAmount } = computeFeeSplit(quote.price);
 
     const { rows: jobRows } = await client.query(
       `INSERT INTO jobs (quote_id, customer_id, provider_id, service_description, price, platform_fee, provider_amount, scheduled_date, scheduled_time, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'quote_accepted') RETURNING *`,
-      [quote.id, customerId, quote.provider_id, quote.description || 'Service job', providerAmount, platformFee, providerAmount, quote.scheduled_date, quote.scheduled_time]
+      [quote.id, customerId, quote.provider_id, quote.description || 'Service job', total, platformFee, providerAmount, quote.scheduled_date, quote.scheduled_time]
     );
     const job = jobRows[0];
     await client.query('INSERT INTO job_state_history (job_id, from_status, to_status, changed_by_user_id) VALUES ($1, NULL, $2, $3)', [

@@ -60,11 +60,10 @@ export async function refreshConnectStatus(providerId) {
 // ---------------------------------------------------------------------------
 // Checkout for a job (customer pays; Taskora holds funds).
 //
-// The provider is paid their full quoted price (job.price === job.provider_amount).
-// Taskora's 10% fee is a SURCHARGE added on top and paid by the customer — it is
-// never deducted from the provider's amount. The customer is therefore charged
-// job.price + job.platform_fee, shown as two separate Stripe line items so the
-// fee is fully transparent at checkout rather than silently folded in.
+// The customer is charged exactly job.price — the quoted price, no surcharge
+// added on top. Taskora's 5% fee is deducted from the PROVIDER's payout
+// (job.provider_amount === job.price - job.platform_fee), released at
+// releasePayoutForJob() time, so it never shows up as a separate charge here.
 // ---------------------------------------------------------------------------
 
 export async function createCheckoutForJob({ jobId, customerId, successUrl, cancelUrl }) {
@@ -75,7 +74,7 @@ export async function createCheckoutForJob({ jobId, customerId, successUrl, canc
   if (job.customer_id !== customerId) throw forbidden('This is not your job.');
   if (job.status !== 'quote_accepted') throw conflict(`This job is not ready for payment (status: ${job.status}).`);
 
-  const amountToCharge = Math.round((Number(job.price) + Number(job.platform_fee)) * 100) / 100;
+  const amountToCharge = Math.round(Number(job.price) * 100) / 100;
 
   const existingPayment = await query('SELECT * FROM payments WHERE job_id = $1', [jobId]);
   let payment = existingPayment.rows[0];
@@ -99,17 +98,6 @@ export async function createCheckoutForJob({ jobId, customerId, successUrl, canc
           product_data: {
             name: 'Service payment',
             description: job.service_description?.slice(0, 200) || 'Service job payment',
-          },
-        },
-        quantity: 1,
-      },
-      {
-        price_data: {
-          currency: 'usd',
-          unit_amount: Math.round(Number(job.platform_fee) * 100),
-          product_data: {
-            name: 'Taskora service fee (10%)',
-            description: 'Platform fee, added on top of the service price',
           },
         },
         quantity: 1,

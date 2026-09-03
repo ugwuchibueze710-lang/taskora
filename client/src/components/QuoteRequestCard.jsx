@@ -57,6 +57,12 @@ export default function QuoteRequestCard({ quoteRequestId, body }) {
               <input required type="number" min="1" step="0.01" placeholder="Price ($)" value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
                 className="w-full rounded-lg border border-ink-900/15 px-2 py-1.5 text-sm" />
+              {Number(form.price) > 0 && (
+                <p className="text-xs text-ink-700/60">
+                  The customer pays ${Number(form.price).toFixed(2)}. After Taskora's 5% fee, you'll receive $
+                  {(Number(form.price) * 0.95).toFixed(2)}.
+                </p>
+              )}
               <textarea placeholder="Description" value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full rounded-lg border border-ink-900/15 px-2 py-1.5 text-sm" rows={2} />

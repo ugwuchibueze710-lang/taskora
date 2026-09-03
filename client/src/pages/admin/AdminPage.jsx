@@ -64,7 +64,7 @@ function AnalyticsTab() {
       <div>
         <h3 className="font-medium mb-2">What Taskora actually keeps, by source (lifetime)</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card><p className="font-display text-xl">{money(rb.platformCommission)}</p><p className="text-xs text-ink-700/60 mt-1">Platform commission (10% job fee)</p></Card>
+          <Card><p className="font-display text-xl">{money(rb.platformCommission)}</p><p className="text-xs text-ink-700/60 mt-1">Platform commission (job fee)</p></Card>
           <Card><p className="font-display text-xl">{money(rb.proMonthly)}</p><p className="text-xs text-ink-700/60 mt-1">Pro subscriptions — monthly</p></Card>
           <Card><p className="font-display text-xl">{money(rb.proYearly)}</p><p className="text-xs text-ink-700/60 mt-1">Pro subscriptions — yearly</p></Card>
           <Card><p className="font-display text-xl">{money(rb.boost)}</p><p className="text-xs text-ink-700/60 mt-1">Boost subscriptions</p></Card>

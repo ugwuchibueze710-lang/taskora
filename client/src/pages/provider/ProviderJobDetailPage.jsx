@@ -40,9 +40,9 @@ export default function ProviderJobDetailPage() {
       <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-2">
         <p className="text-ink-700/80">{job.service_description}</p>
         <div className="pt-2 border-t border-ink-900/8 text-sm space-y-1">
+          <div className="flex justify-between text-ink-700/60"><span>Customer's total</span><span>${Number(job.price).toFixed(2)}</span></div>
+          <div className="flex justify-between text-ink-700/60"><span>Taskora platform fee (5%)</span><span>-${job.platform_fee}</span></div>
           <div className="flex justify-between font-semibold"><span>You receive</span><span>${job.provider_amount}</span></div>
-          <div className="flex justify-between text-ink-700/60"><span>Taskora service fee (10%, paid by customer)</span><span>+${job.platform_fee}</span></div>
-          <div className="flex justify-between text-ink-700/60"><span>Customer's total</span><span>${(Number(job.price) + Number(job.platform_fee)).toFixed(2)}</span></div>
         </div>
       </div>
 

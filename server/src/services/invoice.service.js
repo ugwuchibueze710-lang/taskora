@@ -88,18 +88,18 @@ function renderInvoicePdf(filePath, data) {
 
     let y = tableTop + 25;
     doc.fontSize(10).fillColor('#444');
-    doc.text('Service price', 50, y);
-    doc.text(`$${Number(data.payment_provider_amount).toFixed(2)}`, 450, y);
+    doc.text('Service price (amount charged)', 50, y);
+    doc.text(`$${Number(data.amount_total).toFixed(2)}`, 450, y);
     y += 20;
-    doc.text('Taskora service fee (10%)', 50, y);
-    doc.text(`+$${Number(data.payment_fee).toFixed(2)}`, 450, y);
+    doc.text('Taskora platform fee (5%, deducted from provider payout)', 50, y);
+    doc.text(`-$${Number(data.payment_fee).toFixed(2)}`, 450, y);
     y += 20;
     doc.moveTo(50, y).lineTo(545, y).strokeColor('#ddd').stroke();
     y += 10;
     doc.fontSize(11).fillColor('#111').text('Total charged to customer', 50, y);
     doc.text(`$${Number(data.amount_total).toFixed(2)}`, 450, y);
     y += 20;
-    doc.fontSize(10).fillColor('#444').text('Provider payout (full service price)', 50, y);
+    doc.fontSize(10).fillColor('#444').text('Provider payout (after platform fee)', 50, y);
     doc.text(`$${Number(data.payment_provider_amount).toFixed(2)}`, 450, y);
     y += 30;
 
