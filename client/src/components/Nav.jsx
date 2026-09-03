@@ -8,6 +8,7 @@ import SafeImage from './SafeImage.jsx';
 const CUSTOMER_LINKS = [
   ['/', 'Home'],
   ['/messages', 'Messages'],
+  ['/projects', 'Get Quotes Fast'],
   ['/jobs', 'Jobs'],
   ['/favorites', 'Favorites'],
 ];

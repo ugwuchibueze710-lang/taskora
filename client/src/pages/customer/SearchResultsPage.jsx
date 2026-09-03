@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/client.js';
 import ProviderCard from '../../components/ProviderCard.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -56,7 +56,15 @@ export default function SearchResultsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl mb-1">{q ? `Results for "${q}"` : categoryName || 'All providers'}</h1>
+      <div className="mb-1 flex items-start justify-between gap-3">
+        <h1 className="font-display text-2xl">{q ? `Results for "${q}"` : categoryName || 'All providers'}</h1>
+        <Link
+          to={categoryId ? `/projects/new?categoryId=${categoryId}` : '/projects/new'}
+          className="hidden shrink-0 rounded-full border border-ember-300 px-3 py-1.5 text-xs font-semibold text-ember-700 hover:bg-ember-50 sm:block"
+        >
+          Or post this as a project →
+        </Link>
+      </div>
       {interpreted && (
         <p className="text-sm text-ink-700/60 mb-4">
           Searching {interpreted.keywords?.length ? `for "${interpreted.keywords.join(', ')}"` : 'nearby providers'}

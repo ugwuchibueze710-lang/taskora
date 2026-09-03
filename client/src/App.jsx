@@ -17,6 +17,9 @@ import FavoritesPage from './pages/customer/FavoritesPage.jsx';
 import JobsPage from './pages/customer/JobsPage.jsx';
 import JobDetailPage from './pages/customer/JobDetailPage.jsx';
 import SettingsPage from './pages/customer/SettingsPage.jsx';
+import ProjectsPage from './pages/customer/ProjectsPage.jsx';
+import NewProjectPage from './pages/customer/NewProjectPage.jsx';
+import ProjectDetailPage from './pages/customer/ProjectDetailPage.jsx';
 
 import OnboardingWizardPage from './pages/provider/OnboardingWizardPage.jsx';
 import ProviderDashboardPage from './pages/provider/ProviderDashboardPage.jsx';
@@ -49,6 +52,9 @@ export default function App() {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:id" element={<ConversationPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/new" element={<NewProjectPage />} />
+        <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
