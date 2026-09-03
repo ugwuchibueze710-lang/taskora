@@ -130,37 +130,43 @@ router.post(
 
     await transitionJob(job.id, 'customer_confirmed', { byUserId: req.user.id });
 
+    // Payout release and "job completed" bookkeeping are two separate concerns.
+    // Whether or not Stripe payout can actually go out right now (it can't yet
+    // if the provider hasn't finished Connect onboarding), the job itself is
+    // genuinely done -- so completed_jobs_count, the invoice, and the
+    // completion notifications must ALL still happen either way. Only the
+    // provider-facing message and the optional `warning` differ.
     let payout = null;
-    let invoice = null;
+    let warning = null;
     try {
       payout = await releasePayoutForJob(job.id);
     } catch (err) {
-      // Job still moves toward "completed" in the DB conceptually, but if payout
-      // truly cannot be released (provider onboarding incomplete) we surface that
-      // clearly instead of pretending money moved.
       await query('UPDATE job_state_history SET reason = $1 WHERE job_id = $2 AND to_status = $3', [
         `Payout hold: ${err.message}`,
         job.id,
         'customer_confirmed',
       ]);
-      const updated = await transitionJob(job.id, 'completed', { byUserId: req.user.id, reason: 'Confirmed; payout pending provider setup' });
-      invoice = await generateInvoiceForJob(job.id);
-      return res.json({ job: updated, payout: null, invoice, warning: err.message });
+      warning = err.message;
     }
 
-    const updated = await transitionJob(job.id, 'completed', { byUserId: req.user.id });
-    invoice = await generateInvoiceForJob(job.id);
+    const updated = await transitionJob(job.id, 'completed', {
+      byUserId: req.user.id,
+      reason: warning ? 'Confirmed; payout pending provider setup' : undefined,
+    });
+    const invoice = await generateInvoiceForJob(job.id);
     await query('UPDATE providers SET completed_jobs_count = completed_jobs_count + 1 WHERE id = $1', [job.provider_id]);
 
     await notifyJobParties(updated, {
       type: 'payment_update',
-      providerTitle: 'Payment released!',
-      providerBody: `$${job.provider_amount} has been sent to your Stripe account.`,
+      providerTitle: warning ? 'Job completed' : 'Payment released!',
+      providerBody: warning
+        ? 'The customer confirmed this job is complete. Finish setting up Stripe payouts to receive your funds.'
+        : `$${job.provider_amount} has been sent to your Stripe account.`,
       customerTitle: 'Job completed',
       customerBody: 'Thanks for confirming! Your invoice is ready and you can leave a review.',
     });
 
-    res.json({ job: updated, payout, invoice });
+    res.json({ job: updated, payout, invoice, ...(warning ? { warning } : {}) });
   })
 );
 
