@@ -6,8 +6,6 @@ import Spinner from '../../components/Spinner.jsx';
 import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
-const PER_GROUP_LIMIT = 8;
-
 export default function HomePage() {
   const { user } = useAuth();
   const [groups, setGroups] = useState([]);
@@ -130,45 +128,53 @@ export default function HomePage() {
           className="mb-5 w-full max-w-md rounded-full border border-ink-900/15 px-4 py-2.5 text-sm outline-none focus:border-ember-400"
         />
 
-        {groups.length === 0 && (
-          <div className="flex justify-center py-8"><Spinner size={24} /></div>
-        )}
-
-        {!q && featured.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">
-              {featuredIsDemandDriven && location?.city ? `Trending in ${location.city}` : 'Popular right now'}
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {featured.map((c) => (
-                <CategoryCard key={c.id} category={c} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-8">
-          {filteredGroups.map((g) => (
-            <div key={g.slug}>
-              <div className="flex items-baseline justify-between mb-3">
-                <h3 className="font-display text-lg">{g.name}</h3>
-                {g.categories.length > PER_GROUP_LIMIT && !q && (
-                  <Link to={`/services?group=${g.slug}`} className="text-xs font-medium text-ember-600 hover:text-ember-700">
-                    See all {g.categories.length} →
-                  </Link>
-                )}
-              </div>
+        {/* No search typed: the home page shows ONLY the top-6 featured
+            tiles -- nothing else. Every other category still exists and is
+            fully reachable (typing a search below, or "See all services"
+            above), it just isn't displayed here unless it's actually one of
+            the 6 -- confirmed with the user: the home page itself is
+            top-6-only, not top-6-plus-a-full-directory. */}
+        {!q && (
+          featured.length === 0 ? (
+            <div className="flex justify-center py-8"><Spinner size={24} /></div>
+          ) : (
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">
+                {featuredIsDemandDriven && location?.city ? `Trending in ${location.city}` : 'Popular right now'}
+              </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {(q ? g.categories : g.categories.slice(0, PER_GROUP_LIMIT)).map((c) => (
+                {featured.map((c) => (
                   <CategoryCard key={c.id} category={c} />
                 ))}
               </div>
             </div>
-          ))}
-          {q && filteredGroups.length === 0 && (
-            <p className="text-sm text-ink-700/60">No services match "{categoryQuery}". Try a broader term, or use the search bar above.</p>
-          )}
-        </div>
+          )
+        )}
+
+        {/* Actually searching: show real matches from the full catalog,
+            grouped -- this is the "the rest shows when you search" path. */}
+        {q && (
+          <div className="space-y-8">
+            {groups.length === 0 && (
+              <div className="flex justify-center py-8"><Spinner size={24} /></div>
+            )}
+            {filteredGroups.map((g) => (
+              <div key={g.slug}>
+                <div className="flex items-baseline justify-between mb-3">
+                  <h3 className="font-display text-lg">{g.name}</h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                  {g.categories.map((c) => (
+                    <CategoryCard key={c.id} category={c} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {groups.length > 0 && filteredGroups.length === 0 && (
+              <p className="text-sm text-ink-700/60">No services match "{categoryQuery}". Try a broader term, or use the search bar above.</p>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );
