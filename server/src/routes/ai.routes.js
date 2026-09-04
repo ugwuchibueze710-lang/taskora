@@ -126,7 +126,20 @@ Current user: ${req.user ? `${req.user.first_name}, logged in, mode=${req.user.c
     let finalMessage = null;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const response = await chatCompletion({ messages, tools: TOOLS, tool_choice: 'auto' });
+      let response;
+      try {
+        response = await chatCompletion({ messages, tools: TOOLS, tool_choice: 'auto' });
+      } catch (err) {
+        // Groq is configured but the call itself failed (bad/retired model id, outage,
+        // rate limit, etc.). /search already degrades gracefully to naiveParse for this
+        // exact failure mode -- the assistant must too, instead of throwing all the way
+        // up through asyncHandler into an opaque 500 for the user.
+        console.error('Groq assistant call failed:', err.message);
+        return res.json({
+          reply: "Taskora's AI assistant is temporarily unavailable — you can still use the search bar and browse categories directly.",
+          actions: actionsTaken,
+        });
+      }
       messages.push(response);
 
       if (!response.tool_calls?.length) {

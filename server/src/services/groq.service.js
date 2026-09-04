@@ -18,7 +18,14 @@ export async function chatCompletion({ messages, tools, tool_choice, response_fo
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+      // llama-3.3-70b-versatile (the old default) and llama-3.1-8b-instant (production's
+      // GROQ_MODEL override) were both retired by Groq on 2026-08-16 -- every call was
+      // failing with a 404 model_not_found, silently degrading Smart Search to keyword-only
+      // matching and crashing the AI assistant outright (see the try/catch added around this
+      // call's callers in ai.routes.js). openai/gpt-oss-120b is Groq's current-generation,
+      // actively supported replacement with the same tool-calling + JSON-mode support this
+      // code relies on. Still overridable via GROQ_MODEL for whenever this needs to change again.
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
       messages,
       tools,
       tool_choice,
