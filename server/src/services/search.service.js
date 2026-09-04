@@ -102,7 +102,18 @@ export async function searchProviders(filters = {}) {
     }
 
     let distance = null;
-    if (lat != null && lng != null && p.base_lat != null && p.base_lng != null) {
+    if (lat != null && lng != null) {
+      // The customer has a real location to filter by. A provider who never
+      // configured a base location/service area has no coordinates to compute
+      // a distance against -- treating that as "skip the filter" (the previous
+      // behavior) let such providers match every search nationwide regardless
+      // of where the customer is, which defeats the entire point of
+      // location-based matching (found via a real production report: a
+      // provider based in Evansville, IN was showing up for a Texas search).
+      // Fail closed instead: no configured location means not eligible for a
+      // location-scoped search. A customer with no location set is unaffected
+      // (nothing to filter against either way), same as before.
+      if (p.base_lat == null || p.base_lng == null) continue;
       distance = distanceMiles(lat, lng, p.base_lat, p.base_lng);
       if (distance > (p.service_radius_miles || 15)) continue; // outside their travel radius
     }
