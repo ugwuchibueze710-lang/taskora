@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
 import CategoryPicker from '../../components/CategoryPicker.jsx';
+import ProviderLocationPicker from '../../components/ProviderLocationPicker.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const STEPS = ['Services you offer', 'Custom services', 'Description', 'Business info', 'Image', 'Portfolio', 'Availability', 'Service area', 'Publish'];
@@ -20,7 +21,13 @@ export default function OnboardingWizardPage() {
   const [availabilityMode, setAvailabilityMode] = useState('always');
   const [slots, setSlots] = useState([]);
   const [radiusMiles, setRadiusMiles] = useState(15);
-  const [areaLabel, setAreaLabel] = useState('');
+  // areaLocation carries the real, geocoded place { label, lat, lng } picked via
+  // ProviderLocationPicker -- NOT just a free-text label. Sending only a label
+  // (the old behavior) meant base_lat/base_lng were never actually persisted, so
+  // this provider could never be found in any location-scoped search (see
+  // search.service.js's location-eligibility fix -- it fails closed on missing
+  // coordinates precisely because a label with no coordinates isn't a real place).
+  const [areaLocation, setAreaLocation] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,7 +67,15 @@ export default function OnboardingWizardPage() {
         await api.put('/providers/me/availability', { mode: availabilityMode, slots });
       }
       if (step === 7) {
-        await api.put('/providers/me/service-area', { radiusMiles, label: areaLabel || undefined });
+        if (areaLocation?.lat == null || areaLocation?.lng == null) {
+          throw new Error('Pick your base location from the search results so customers near you can find you.');
+        }
+        await api.put('/providers/me/service-area', {
+          radiusMiles,
+          label: areaLocation.label,
+          lat: areaLocation.lat,
+          lng: areaLocation.lng,
+        });
       }
       setStep((s) => s + 1);
     } catch (err) {
@@ -213,8 +228,13 @@ export default function OnboardingWizardPage() {
               <input type="number" min="1" value={radiusMiles} onChange={(e) => setRadiusMiles(Number(e.target.value))}
                 className="w-24 rounded-full border border-ink-900/15 px-3 py-1.5 text-sm" />
             </div>
-            <input value={areaLabel} onChange={(e) => setAreaLabel(e.target.value)} placeholder="Your base location (e.g. Owensboro, KY)"
-              className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm mt-2" />
+            <div className="mt-2">
+              <ProviderLocationPicker
+                value={areaLocation}
+                onChange={setAreaLocation}
+                placeholder="Your base location (e.g. Owensboro, KY)"
+              />
+            </div>
           </div>
         )}
 

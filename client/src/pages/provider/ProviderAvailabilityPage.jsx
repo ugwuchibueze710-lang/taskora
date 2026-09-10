@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client.js';
 import Spinner from '../../components/Spinner.jsx';
+import ProviderLocationPicker from '../../components/ProviderLocationPicker.jsx';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -8,8 +9,13 @@ export default function ProviderAvailabilityPage() {
   const [mode, setMode] = useState('always');
   const [slots, setSlots] = useState([]);
   const [radiusMiles, setRadiusMiles] = useState(15);
+  // Pre-filled from the provider's current base_lat/base_lng/base_location_label
+  // (null for a provider who never actually set one -- this page used to have no
+  // location field at all, so "Save" here silently never touched those columns).
+  const [areaLocation, setAreaLocation] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/providers/me').then(({ data }) => {
@@ -18,6 +24,9 @@ export default function ProviderAvailabilityPage() {
         data.availability.map((a) => ({ dayOfWeek: a.day_of_week, startTime: a.start_time.slice(0, 5), endTime: a.end_time.slice(0, 5) }))
       );
       setRadiusMiles(data.serviceArea?.radius_miles || data.provider.service_radius_miles);
+      if (data.provider.base_lat != null && data.provider.base_lng != null) {
+        setAreaLocation({ label: data.provider.base_location_label, lat: data.provider.base_lat, lng: data.provider.base_lng });
+      }
       setLoaded(true);
     });
   }, []);
@@ -33,10 +42,24 @@ export default function ProviderAvailabilityPage() {
   };
 
   const save = async () => {
-    await api.put('/providers/me/availability', { mode, slots });
-    await api.put('/providers/me/service-area', { radiusMiles });
-    setSaved('Saved!');
-    setTimeout(() => setSaved(''), 1500);
+    setError('');
+    if (areaLocation?.lat == null || areaLocation?.lng == null) {
+      setError('Pick your base location from the search results so customers near you can find you.');
+      return;
+    }
+    try {
+      await api.put('/providers/me/availability', { mode, slots });
+      await api.put('/providers/me/service-area', {
+        radiusMiles,
+        label: areaLocation.label,
+        lat: areaLocation.lat,
+        lng: areaLocation.lng,
+      });
+      setSaved('Saved!');
+      setTimeout(() => setSaved(''), 1500);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   if (!loaded) return <div className="flex justify-center py-16"><Spinner size={28} /></div>;
@@ -77,8 +100,12 @@ export default function ProviderAvailabilityPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-3">
         <h2 className="font-medium mb-2">Service area</h2>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-ink-700/70">Base location</label>
+          <ProviderLocationPicker value={areaLocation} onChange={setAreaLocation} placeholder="Search city, ZIP, or address" />
+        </div>
         <div className="flex gap-2 items-center">
           {[5, 10, 25].map((r) => (
             <button key={r} onClick={() => setRadiusMiles(r)} className={`rounded-full px-4 py-1.5 text-sm border ${radiusMiles === r ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
@@ -91,6 +118,7 @@ export default function ProviderAvailabilityPage() {
 
       <button onClick={save} className="rounded-full bg-ember-500 px-6 py-2 text-sm font-semibold text-white hover:bg-ember-600">Save</button>
       {saved && <span className="ml-2 text-sm text-emerald-600">{saved}</span>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 }
