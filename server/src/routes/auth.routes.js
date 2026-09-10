@@ -29,7 +29,16 @@ router.post(
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
     if (!token) throw unauthorized('Missing access token.');
     const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !data?.user) throw unauthorized('Invalid or expired session.');
+    if (error || !data?.user) {
+      // The client-facing message is deliberately generic, but this is the
+      // one spot that would otherwise hide *why* Supabase rejected the
+      // token -- a wrong/rotated SUPABASE_SERVICE_ROLE_KEY, a project
+      // mismatch, or a genuinely expired/invalid token all land here and
+      // look identical from the browser. Logging the real reason turns a
+      // guessing game into a one-line log lookup.
+      console.error('Supabase getUser failed during /auth/bootstrap:', error?.message || 'no user on response');
+      throw unauthorized('Invalid or expired session.');
+    }
     const supaUser = data.user;
 
     // Idempotent: a retried bootstrap call (flaky network, a double-click)
