@@ -39,7 +39,26 @@ app.set('trust proxy', 1);
 // Stripe webhooks need the raw body BEFORE json parsing, so mount it first.
 app.use('/api/payments/webhook', webhookRouter);
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Auth (sign up / log in / password reset) and session refresh now happen as
+// direct browser calls to Supabase, not through this server -- Helmet's
+// default Content-Security-Policy only allows the page to talk to its own
+// origin (connect-src 'self'), which silently blocks those calls ("Failed to
+// fetch" / a CSP violation in the browser console, not a 4xx from this
+// server, which is why it doesn't show up in server logs). Explicitly allow
+// connect-src to reach the configured Supabase project on top of Helmet's
+// other defaults.
+const supabaseConnectSrc = process.env.SUPABASE_URL ? [new URL(process.env.SUPABASE_URL).origin] : [];
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'connect-src': ["'self'", ...supabaseConnectSrc],
+      },
+    },
+  })
+);
 app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN?.split(',') || 'http://localhost:5173',
@@ -52,9 +71,13 @@ app.use(express.urlencoded({ extended: true }));
 const globalLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200, standardHeaders: true, legacyHeaders: false });
 app.use('/api', globalLimiter);
 
+// Sign up / log in themselves are direct browser->Supabase calls now (not
+// routed through this server, so there's nothing here to rate-limit for
+// them) -- /bootstrap is the one auth endpoint this server still exposes,
+// called once right after a Supabase sign-up to create the app-side profile
+// row, so it's the one worth protecting from abuse.
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/bootstrap', authLimiter);
 
 // AI calls hit a paid third-party API and are more expensive to abuse than a normal CRUD route.
 const aiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 15, standardHeaders: true, legacyHeaders: false });
