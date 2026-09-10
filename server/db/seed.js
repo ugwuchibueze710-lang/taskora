@@ -10,7 +10,31 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
+import { createClient } from '@supabase/supabase-js';
 import { syncCategoryCatalog } from '../src/services/category.service.js';
+
+// Auth is Supabase Auth now (see migration 014 + middleware/auth.js) -- a
+// seeded demo account can only actually log in if it also has a matching
+// Supabase Auth user, linked via users.supabase_user_id. Best-effort: if
+// SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY aren't set (fine for a quick local
+// run that only needs demo *data*, not working logins), this just warns and
+// leaves supabase_user_id NULL rather than failing the whole seed.
+const supabaseAdmin =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
+
+async function createSupabaseUser(email, password) {
+  if (!supabaseAdmin) return null;
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error) {
+    console.warn(`  (could not create a Supabase Auth login for ${email}: ${error.message} -- this account's data was still seeded)`);
+    return null;
+  }
+  return data.user.id;
+}
 
 // A few finer-grained sub-services under some demo providers' categories,
 // purely for demoing the optional "specific services" layer.
@@ -56,18 +80,23 @@ async function main() {
   }
 
   console.log('Seeding [TEST DATA] accounts...');
+  if (!supabaseAdmin) {
+    console.log('  SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY not set -- seeding data only, these accounts will not be able to log in.');
+  }
   const passwordHash = await bcrypt.hash('test1234', 10);
 
+  const adminSupabaseId = await createSupabaseUser('admin@taskora.test', 'test1234');
   const { rows: adminRows } = await client.query(
-    `INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES ($1,$2,$3,$4,'admin') RETURNING id`,
-    ['Taskora', 'Admin', 'admin@taskora.test', passwordHash]
+    `INSERT INTO users (first_name, last_name, email, password_hash, role, supabase_user_id) VALUES ($1,$2,$3,$4,'admin',$5) RETURNING id`,
+    ['Taskora', 'Admin', 'admin@taskora.test', passwordHash, adminSupabaseId]
   );
   await client.query('INSERT INTO profiles (user_id) VALUES ($1)', [adminRows[0].id]);
   await client.query('INSERT INTO user_settings (user_id) VALUES ($1)', [adminRows[0].id]);
 
+  const customerSupabaseId = await createSupabaseUser('customer@taskora.test', 'test1234');
   const { rows: customerRows } = await client.query(
-    `INSERT INTO users (first_name, last_name, email, password_hash) VALUES ($1,$2,$3,$4) RETURNING id`,
-    ['Jamie', 'Customer', 'customer@taskora.test', passwordHash]
+    `INSERT INTO users (first_name, last_name, email, password_hash, supabase_user_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+    ['Jamie', 'Customer', 'customer@taskora.test', passwordHash, customerSupabaseId]
   );
   await client.query('INSERT INTO profiles (user_id, location_label, location_lat, location_lng) VALUES ($1,$2,$3,$4)', [
     customerRows[0].id, 'Owensboro, KY', 37.7742, -87.1133,
@@ -83,9 +112,10 @@ async function main() {
 
   for (const [i, p] of providerSeeds.entries()) {
     const email = `${p.first.toLowerCase()}@taskora.test`;
+    const providerSupabaseId = await createSupabaseUser(email, 'test1234');
     const { rows: userRows } = await client.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, current_mode) VALUES ($1,$2,$3,$4,'provider') RETURNING id`,
-      [p.first, p.last, email, passwordHash]
+      `INSERT INTO users (first_name, last_name, email, password_hash, current_mode, supabase_user_id) VALUES ($1,$2,$3,$4,'provider',$5) RETURNING id`,
+      [p.first, p.last, email, passwordHash, providerSupabaseId]
     );
     const userId = userRows[0].id;
     await client.query('INSERT INTO profiles (user_id, location_label, location_lat, location_lng) VALUES ($1,$2,$3,$4)', [

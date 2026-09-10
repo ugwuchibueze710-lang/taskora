@@ -13,6 +13,7 @@
 // a disclosed, known limitation of this approach, not a bug.
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
+import { supabase } from '../lib/supabaseClient.js';
 
 const CallContext = createContext(null);
 
@@ -23,9 +24,17 @@ const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stu
 // NATs, no TURN to fall back on) -- fail it out cleanly instead of hanging.
 const CONNECT_TIMEOUT_MS = 20_000;
 
-function wsUrl() {
+// A browser can't set a custom Authorization header on a WebSocket
+// handshake, so the Supabase access token rides along as a query param
+// instead -- server/src/realtime/call-signaling.js verifies it the same way
+// requireAuth verifies every REST request.
+async function wsUrl() {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}/ws/calls`;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = encodeURIComponent(session?.access_token || '');
+  return `${proto}//${window.location.host}/ws/calls?token=${token}`;
 }
 
 export function CallProvider({ children }) {
@@ -307,9 +316,11 @@ export function CallProvider({ children }) {
     let cancelled = false;
     let reconnectTimer = null;
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
-      const ws = new WebSocket(wsUrl());
+      const url = await wsUrl();
+      if (cancelled) return;
+      const ws = new WebSocket(url);
       wsRef.current = ws;
       ws.onmessage = (e) => {
         try {

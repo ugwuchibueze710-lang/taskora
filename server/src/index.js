@@ -8,7 +8,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
-import { sessionMiddleware } from './middleware/session.js';
 import { attachCallSignaling } from './realtime/call-signaling.js';
 
 import authRoutes from './routes/auth.routes.js';
@@ -61,8 +60,15 @@ app.use('/api/auth/signup', authLimiter);
 const aiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 15, standardHeaders: true, legacyHeaders: false });
 app.use('/api/ai', aiLimiter);
 
-app.use(sessionMiddleware);
+// Auth is now Supabase Auth (a Bearer access token on each request, verified
+// per-route by requireAuth/attachUserIfPresent in middleware/auth.js) --
+// there is no more server-side session middleware to mount globally.
 
+// Profile/provider/portfolio images now live in Supabase Storage instead of
+// local disk. Invoice PDFs (services/invoice.service.js) are the one thing
+// still written to local disk -- untouched by this migration, since
+// invoices weren't part of what was asked for and sit inline with the
+// Stripe payment flow -- so this still needs to serve that one subfolder.
 app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD_DIR?.replace('./', '') || 'uploads')));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
@@ -163,6 +169,7 @@ syncCategoryCatalog()
     });
     // In-app calling's signaling channel (offer/answer/ICE relay) rides the
     // same HTTP server as a WebSocket upgrade on /ws/calls, authenticated off
-    // the same session cookie as every other route -- see realtime/call-signaling.js.
+    // a Supabase access token passed as a query param (browsers can't set
+    // custom headers on a WS handshake) -- see realtime/call-signaling.js.
     attachCallSignaling(server);
   });

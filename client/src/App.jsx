@@ -4,6 +4,7 @@ import { RequireAuth, RequireAdmin, RequireGuest } from './components/ProtectedR
 
 import LoginPage from './pages/auth/LoginPage.jsx';
 import SignupPage from './pages/auth/SignupPage.jsx';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import SupportPage from './pages/SupportPage.jsx';
 
@@ -43,6 +44,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
       <Route path="/signup" element={<RequireGuest><SignupPage /></RequireGuest>} />
+      {/* Not wrapped in RequireGuest/RequireAuth: a password-reset link can
+          land here whether or not the browser currently has an app session. */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route path="/" element={<HomePage />} />

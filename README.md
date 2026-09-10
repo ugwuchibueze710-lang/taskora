@@ -9,7 +9,7 @@ search, provider system) is custom-built.
 
 ```
 client/   React + Vite + Tailwind single-page app
-server/   Node.js + Express API, session auth, raw SQL over PostgreSQL (no ORM)
+server/   Node.js + Express API, Supabase Auth (Bearer tokens), raw SQL over PostgreSQL (no ORM)
 server/db/migrations/  Hand-written, version-controlled SQL schema migrations
 server/db/seed.js      Optional, explicit dev-only seed data (never runs automatically)
 ```
@@ -26,6 +26,8 @@ External services, and why each one is used:
 - **Mapbox** — geocoding (turning a typed place into lat/lng) and distance calculations for the location system.
 - **Stripe** — payments, Stripe Connect (Express accounts) for provider payouts, and Stripe Subscriptions for
   Taskora Pro / Taskora Boost.
+- **Supabase** — Auth (sign up/log in/password reset — the app no longer stores or checks passwords itself) and
+  Storage (profile pictures, provider logos/photos, portfolio photos). See "Auth" and "Image storage" below.
 
 No other third-party APIs are used.
 
@@ -39,8 +41,12 @@ npm run install:all
 
 # 2. Configure environment
 cp server/.env.example server/.env
-# Edit server/.env — at minimum set DATABASE_URL to a real Postgres connection string.
-# GROQ_API_KEY / MAPBOX_TOKEN / STRIPE_* can be left blank during local development —
+cp client/.env.example client/.env
+# Edit server/.env — at minimum set DATABASE_URL to a real Postgres connection string,
+# plus SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (server/.env) and
+# VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY (client/.env) from your Supabase project's
+# Project Settings > API — sign up/log in and image uploads won't work without these.
+# GROQ_API_KEY / MAPBOX_TOKEN / STRIPE_* can still be left blank during local development —
 # the app degrades gracefully (plain keyword search still works, and payment/AI
 # endpoints return a clear "not configured yet" error instead of crashing).
 
@@ -58,29 +64,47 @@ npm run dev:server   # http://localhost:4000
 npm run dev:client   # http://localhost:5173 (proxies /api and /uploads to :4000)
 ```
 
-Seeded test accounts (only created if you run `npm run seed`), all password `test1234`:
+Seeded test accounts (only created if you run `npm run seed`, and only get a working login if
+`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` are set at seed time), all password `test1234`:
 - `admin@taskora.test` — admin
 - `customer@taskora.test` — customer, location pre-set to Owensboro, KY
-- `alex@taskora.test`, `sam@taskora.test`, `morgan@taskora.test` — published providers across
-  House Cleaning, Handyman, and Lawn Care
+- `alex@taskora.test`, `sam@taskora.test`, `morgan@taskora.test`, `jordan@taskora.test` — published providers across
+  House Cleaning, Handyman, Lawn Care, and Locksmith
+
+## Auth
+
+Sign up / log in / password reset are handled entirely by **Supabase Auth** — the app itself never stores or
+checks a password. The client talks to Supabase directly (`@supabase/supabase-js`) to get a session, then sends
+that session's access token as `Authorization: Bearer <token>` on every API request; the server verifies it
+against Supabase on each request rather than trusting a cookie (`server/src/middleware/auth.js`). A `users` row is
+still kept per person for everything the app itself owns (name, role, provider link, etc.), linked to its Supabase
+identity via `users.supabase_user_id` (see migration `014_supabase_auth.sql`) rather than by sharing the same id —
+Supabase always assigns its own id for a new user, so the two are never guaranteed to match.
+
+New sign-ups get a session immediately (no confirmation email — "Confirm email" is turned off in the Supabase
+project's Auth settings) and Supabase enforces one account per email on its own. "Forgot password?" on the login
+page is also how any account that predates this system gets its first real Supabase password — see
+`POST /api/admin/migrate-users-to-supabase` for the one-time migration that links a legacy account by email so
+that flow works for it.
 
 ## Image storage
 
-Profile pictures, provider logos/photos, portfolio photos, and generated invoice PDFs are stored as files on disk
-under `server/uploads/`, with only the file path/URL recorded in PostgreSQL (never the binary itself). This is the
-simplest reliable option that works identically in local dev and anywhere on Render without adding a paid
-object-storage API.
+Profile pictures, provider logos/photos, and portfolio photos upload to **Supabase Storage** (a public bucket,
+`taskora-uploads` by default — see `SUPABASE_STORAGE_BUCKET`): the client sends the file to the server as before,
+and the server pushes it to Supabase Storage with the service role key and stores the returned public URL in
+Postgres, same as it always stored a URL (never the binary itself) — see `server/src/middleware/upload.js`.
 
-**On Render's Free plan** (what `render.yaml` uses by default): free web services cannot attach a Persistent Disk,
-so `server/uploads/` lives on the service's ephemeral local filesystem — uploaded files are wiped on every deploy
-and on any restart caused by the free plan's 15-minute-inactivity spin-down. Everything still works correctly
-(nothing crashes or fakes success), but a provider's uploaded photos, avatars, and past invoice PDFs won't survive
-a redeploy. This is a real, honest limitation of the Free plan, not a bug.
+Generated invoice PDFs are the one thing still stored as files on disk under `server/uploads/`
+(`server/src/services/invoice.service.js`) — that wasn't part of this migration and sits inline with the Stripe
+payment flow. **On Render's Free plan**, free web services cannot attach a Persistent Disk, so `server/uploads/`
+lives on the service's ephemeral local filesystem — invoice PDFs are wiped on every deploy and on any restart
+caused by the free plan's 15-minute-inactivity spin-down. Everything still works correctly (nothing crashes or
+fakes success), but a past invoice PDF won't survive a redeploy. This is a real, honest limitation of the Free
+plan, not a bug — the same one profile/provider images used to have before they moved to Supabase Storage above.
 
-**To make uploads durable**, upgrade the web service to a paid plan (e.g. Starter) in the Render dashboard and
-attach a Persistent Disk mounted at `server/uploads` — no code changes needed, just add the disk and redeploy.
-If you outgrow local disk entirely (e.g. multiple server instances), the natural next step is an S3-compatible
-bucket — a deliberate future upgrade, not something this app silently depends on today.
+**To make invoice PDFs durable** without moving them too, upgrade the web service to a paid plan (e.g. Starter) in
+the Render dashboard and attach a Persistent Disk mounted at `server/uploads` — no code changes needed, just add
+the disk and redeploy.
 
 ## The Groq action engine
 
@@ -135,13 +159,22 @@ provider_marked_complete → customer_confirmed → completed
    first deploy) to move to a paid plan whenever you're ready for durable uploads and a permanent database.
 3. After the first deploy, set these environment variables on the web service (Render dashboard → Environment):
    - `CLIENT_ORIGIN` → your Render URL, e.g. `https://taskora.onrender.com` (needed for Stripe redirect URLs)
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (from Supabase → Project Settings → API) and
+     `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (same page — the client build reads the `VITE_` pair, so a
+     change here needs a redeploy to take effect, same as the code itself)
+   - In the Supabase dashboard → Authentication → Sign In / Providers, turn **off** "Confirm email" (sign-ups
+     should get a session immediately, with no confirmation email) and create a **public** Storage bucket named
+     `taskora-uploads` (or set `SUPABASE_STORAGE_BUCKET` to whatever name you used)
    - `GROQ_API_KEY`, `MAPBOX_TOKEN`
    - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRO_PRICE_ID`, `STRIPE_BOOST_PRICE_ID`
    - `STRIPE_WEBHOOK_SECRET` — create a Stripe webhook pointed at
      `https://<your-app>.onrender.com/api/payments/webhook` (events: `checkout.session.completed`,
      `payment_intent.payment_failed`, `account.updated`, `customer.subscription.*`) and paste its signing secret here.
 4. Redeploy. Migrations run automatically on every deploy (`npm start` runs `npm run migrate` first).
-5. Visit `/health` to confirm the service is up. Note: on the Free plan the service spins down after 15
+5. If you're migrating an **existing** database (real users created before Supabase Auth was added), log in as an
+   admin and call `POST /api/admin/migrate-users-to-supabase` once — see "Auth" above. Skip this on a fresh
+   database with no pre-existing users.
+6. Visit `/health` to confirm the service is up. Note: on the Free plan the service spins down after 15
    minutes of inactivity and takes ~1 minute to wake back up on the next request — this is expected, not an outage.
 
 ## What's real vs. what needs your keys
@@ -157,12 +190,14 @@ are wired up completely, but obviously can't make real external calls until you 
 
 ## Security notes
 
-- Passwords are hashed with bcrypt; there are intentionally no complexity rules (per product spec), but nothing is
-  ever stored in plaintext.
-- Sessions are server-side (Postgres-backed via `connect-pg-simple`), httpOnly, `secure` in production.
+- Passwords are owned entirely by Supabase Auth — this app never sees, stores, or checks one itself. See "Auth"
+  above.
+- Every authenticated request carries a Supabase access token (`Authorization: Bearer <token>`), verified against
+  Supabase on the server on every request — not a cookie, and not trusted merely because it's present.
 - Every mutating endpoint re-checks ownership/authorization server-side — the frontend's UI state is never trusted
   as an authorization boundary.
-- Admin routes require `role = 'admin'` on the authenticated session user, checked on every request.
+- Admin routes require `role = 'admin'` on the authenticated user (our own `users` table, looked up by Supabase
+  identity), checked on every request.
 - File uploads are restricted by MIME type and size.
 - Stripe webhooks are signature-verified; nothing financial is ever accepted from the frontend directly.
 - Rate limiting is applied globally, more tightly on `/api/auth/*`, and on `/api/ai/*` (a paid upstream call).

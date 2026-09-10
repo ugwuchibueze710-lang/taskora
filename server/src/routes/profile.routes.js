@@ -4,7 +4,7 @@ import { query } from '../lib/db.js';
 import { asyncHandler, badRequest } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { requireAuth } from '../middleware/auth.js';
-import { uploader, publicUrlFor } from '../middleware/upload.js';
+import { uploader, uploadToStorage } from '../middleware/upload.js';
 
 const router = Router();
 const avatarUpload = uploader('avatars', { maxSizeMb: 5 });
@@ -55,7 +55,7 @@ router.post(
   avatarUpload.single('avatar'),
   asyncHandler(async (req, res) => {
     if (!req.file) throw badRequest('No image uploaded.');
-    const url = publicUrlFor('avatars', req.file.filename);
+    const url = await uploadToStorage('avatars', req.file);
     await query(`UPDATE profiles SET avatar_url = $1, updated_at = now() WHERE user_id = $2`, [url, req.user.id]);
     res.json({ avatarUrl: url });
   })

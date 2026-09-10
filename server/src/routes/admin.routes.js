@@ -1,10 +1,12 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { query, withTransaction } from '../lib/db.js';
 import { asyncHandler, badRequest, notFound, conflict } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { logAdminAction } from '../services/audit.service.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { refundPayment } from '../services/payment.service.js';
 import { transitionJob, notifyJobParties } from '../services/job.service.js';
 import { notify } from '../services/notification.service.js';
@@ -522,6 +524,50 @@ router.get(
       revenueSeries,
       granularity,
     });
+  })
+);
+
+// ---- One-time Supabase Auth migration ----
+// Every pre-Supabase account (bcrypt password in our own `users` table, no
+// Supabase identity yet) needs a matching Supabase Auth user before
+// "Forgot password" can work for them -- Supabase can only email a reset
+// link for an address it already knows about. This creates one per pending
+// user, with a random password nobody is ever told (Supabase owns
+// credentials from here on; the account's real password gets set the first
+// time its owner uses "Forgot password" on the login page).
+// email_confirm: true skips Supabase's own confirmation email for these --
+// they aren't new signups, so there's nothing to confirm.
+// Idempotent: only ever touches users with no supabase_user_id yet, so it's
+// safe to run again (e.g. after fixing a handful of failures) without
+// re-processing everyone who already succeeded.
+router.post(
+  '/migrate-users-to-supabase',
+  asyncHandler(async (req, res) => {
+    const { rows: pending } = await query(`SELECT id, email FROM users WHERE supabase_user_id IS NULL ORDER BY created_at`);
+
+    const results = { total: pending.length, migrated: 0, failed: [] };
+    for (const u of pending) {
+      try {
+        const { data, error } = await supabaseAdmin.auth.admin.createUser({
+          email: u.email,
+          password: crypto.randomUUID() + crypto.randomUUID(),
+          email_confirm: true,
+        });
+        if (error) throw error;
+        await query('UPDATE users SET supabase_user_id = $1, updated_at = now() WHERE id = $2', [data.user.id, u.id]);
+        results.migrated++;
+      } catch (err) {
+        results.failed.push({ userId: u.id, email: u.email, error: err.message });
+      }
+    }
+
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'migrate_users_to_supabase',
+      targetType: 'user',
+      targetId: null,
+    });
+    res.json(results);
   })
 );
 

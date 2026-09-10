@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { query, withTransaction } from '../lib/db.js';
 import { asyncHandler, badRequest, notFound, forbidden } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
-import { requireAuth, requireProvider } from '../middleware/auth.js';
-import { uploader, publicUrlFor } from '../middleware/upload.js';
+import { requireAuth, requireProvider, attachUserIfPresent } from '../middleware/auth.js';
+import { uploader, uploadToStorage } from '../middleware/upload.js';
 import { ensureProviderRecord, recomputeCompleteness } from '../services/provider.service.js';
 import { distanceMiles } from '../services/mapbox.service.js';
 
@@ -188,7 +188,7 @@ router.post(
   asyncHandler(async (req, res) => {
     let imageUrl, source;
     if (req.file) {
-      imageUrl = publicUrlFor('providers', req.file.filename);
+      imageUrl = await uploadToStorage('providers', req.file);
       source = req.body.source === 'logo' ? 'logo' : 'custom';
     } else if (req.body.useProfilePicture === 'true' || req.body.useProfilePicture === true) {
       const { rows } = await query('SELECT avatar_url FROM profiles WHERE user_id = $1', [req.user.id]);
@@ -218,7 +218,7 @@ router.post(
     if (!req.files?.length) throw badRequest('No photos uploaded.');
     const inserted = [];
     for (const [i, file] of req.files.entries()) {
-      const url = publicUrlFor('portfolio', file.filename);
+      const url = await uploadToStorage('portfolio', file);
       const { rows } = await query(
         'INSERT INTO provider_photos (provider_id, url, sort_order) VALUES ($1, $2, $3) RETURNING *',
         [req.user.provider_id, url, i]
@@ -396,6 +396,7 @@ router.get(
 // ---- Public: view a provider's storefront (also records a profile view) ----
 router.get(
   '/:id',
+  attachUserIfPresent,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { rows } = await query(
@@ -407,11 +408,11 @@ router.get(
     const provider = rows[0];
     if (!provider) throw notFound('This provider could not be found.');
 
-    const viewerKey = req.session?.userId || req.ip || 'anon';
+    const viewerKey = req.user?.id || req.ip || 'anon';
     await query(
       `INSERT INTO profile_views (provider_id, viewer_user_id, viewer_key)
        VALUES ($1, $2, $3) ON CONFLICT (provider_id, viewer_key, viewed_on) DO NOTHING`,
-      [id, req.session?.userId || null, String(viewerKey)]
+      [id, req.user?.id || null, String(viewerKey)]
     );
 
     const [categories, services, photos, availability, reviews] = await Promise.all([

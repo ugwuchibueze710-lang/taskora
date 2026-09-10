@@ -1,38 +1,62 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { query, withTransaction } from '../lib/db.js';
-import { asyncHandler, conflict, unauthorized, badRequest } from '../lib/errors.js';
-import { validateBody, emailSchema, passwordSchema } from '../lib/validate.js';
+import { asyncHandler, unauthorized } from '../lib/errors.js';
+import { validateBody } from '../lib/validate.js';
 import { requireAuth } from '../middleware/auth.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { logAudit } from '../services/audit.service.js';
 
 const router = Router();
 
-const signupSchema = z.object({
+const bootstrapSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.').max(80),
   lastName: z.string().trim().min(1, 'Last name is required.').max(80),
-  email: emailSchema,
-  password: passwordSchema,
 });
 
+// Called once, right after a successful supabase.auth.signUp() on the
+// client. Supabase Auth now owns the credential entirely (and with email
+// confirmation turned off in the project settings, signUp() already returns
+// a ready-to-use session) -- this endpoint's only job is to create the
+// app-side row (users/profiles/user_settings) the rest of the app has
+// always kept per user, keyed by the new Supabase identity instead of a
+// password hash.
 router.post(
-  '/signup',
-  validateBody(signupSchema),
+  '/bootstrap',
+  validateBody(bootstrapSchema),
   asyncHandler(async (req, res) => {
-    const { firstName, lastName, email, password } = req.body;
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
+    if (!token) throw unauthorized('Missing access token.');
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) throw unauthorized('Invalid or expired session.');
+    const supaUser = data.user;
 
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length) throw conflict('An account with this email already exists.');
+    // Idempotent: a retried bootstrap call (flaky network, a double-click)
+    // must not create a second row. If this Supabase identity -- or, for a
+    // migrated legacy account linking up for the first time, this email --
+    // already has a users row, just return/link it instead of erroring.
+    const existing = await query(
+      `SELECT id, first_name, last_name, email, role, current_mode, status, created_at, supabase_user_id
+         FROM users WHERE supabase_user_id = $1 OR email = $2`,
+      [supaUser.id, supaUser.email]
+    );
+    if (existing.rows.length) {
+      const row = existing.rows[0];
+      if (!row.supabase_user_id) {
+        await query('UPDATE users SET supabase_user_id = $1, updated_at = now() WHERE id = $2', [supaUser.id, row.id]);
+      }
+      delete row.supabase_user_id;
+      return res.status(200).json({ user: row });
+    }
 
-    const passwordHash = await bcrypt.hash(password, 12);
-
+    const { firstName, lastName } = req.body;
     const user = await withTransaction(async (client) => {
       const { rows } = await client.query(
-        `INSERT INTO users (first_name, last_name, email, password_hash)
+        `INSERT INTO users (first_name, last_name, email, supabase_user_id)
          VALUES ($1, $2, $3, $4)
          RETURNING id, first_name, last_name, email, role, current_mode, status, created_at`,
-        [firstName, lastName, email, passwordHash]
+        [firstName, lastName, supaUser.email, supaUser.id]
       );
       const newUser = rows[0];
       await client.query('INSERT INTO profiles (user_id) VALUES ($1)', [newUser.id]);
@@ -44,48 +68,17 @@ router.post(
       return newUser;
     });
 
-    req.session.userId = user.id;
     await logAudit({ userId: user.id, eventType: 'signup', req });
-
     res.status(201).json({ user });
   })
 );
 
-const loginSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-});
-
-router.post(
-  '/login',
-  validateBody(loginSchema),
-  asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    const { rows } = await query(
-      `SELECT id, first_name, last_name, email, password_hash, role, current_mode, status, created_at
-         FROM users WHERE email = $1`,
-      [email]
-    );
-    const user = rows[0];
-    if (!user) throw unauthorized('Incorrect email or password.');
-    if (user.status !== 'active') throw unauthorized('This account is not active. Contact support.');
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) throw unauthorized('Incorrect email or password.');
-
-    req.session.userId = user.id;
-    delete user.password_hash;
-    await logAudit({ userId: user.id, eventType: 'login', req });
-
-    res.json({ user });
-  })
-);
-
 router.post('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('taskora.sid');
-    res.json({ success: true });
-  });
+  // Sessions now live entirely client-side (Supabase's own SDK, in the
+  // browser's local storage) -- there is no server-side session left to
+  // destroy. Kept as a no-op 200 so nothing breaks if any stray client code
+  // still calls it during rollout.
+  res.json({ success: true });
 });
 
 router.get(

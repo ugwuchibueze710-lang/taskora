@@ -14,16 +14,32 @@ services:
         value: 10000
       - key: CLIENT_ORIGIN
         sync: false # set this to your Render URL (e.g. https://taskora.onrender.com) after the first deploy
-      - key: SESSION_SECRET
-        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: taskora-db
           property: connectionString
+      # ---- Supabase (Auth + Storage) ----
+      # From Supabase dashboard > Project Settings > API. SUPABASE_SERVICE_ROLE_KEY
+      # is a full-admin secret -- server-side only, never expose it to the client.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: taskora-uploads
+      # VITE_-prefixed vars are read at build time by `npm run build` (this is a
+      # single-service deploy, so the client build runs on this same service) --
+      # the anon key is safe to ship in the client bundle by design.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      # ---- Uploads (invoices only -- profile/provider/portfolio images now
+      # live in Supabase Storage above) ----
       - key: UPLOAD_DIR
         value: ./uploads
       # PUBLIC_UPLOAD_BASE_URL is intentionally left unset: the server then serves
-      # uploaded files as relative /uploads/... paths, which resolve correctly
+      # invoice PDFs as relative /uploads/... paths, which resolve correctly
       # against whatever domain Render assigns without any extra configuration.
       - key: GROQ_API_KEY
         sync: false

@@ -5,15 +5,17 @@
 // JSON messages between two authenticated sockets -- the audio itself never
 // touches this server.
 //
-// Authentication reuses the exact same session cookie ('taskora.sid') as
-// every REST route: the shared `sessionMiddleware` (middleware/session.js)
-// is run by hand against the upgrade request before the WebSocket handshake
-// completes, so there is exactly one source of truth for "who is this",
-// never a second parallel auth mechanism just for calls.
+// Authentication uses the same Supabase access token as every REST route,
+// just carried differently: a browser can't set a custom Authorization
+// header on a WebSocket handshake, so the client appends it as a query
+// param instead (?token=<access_token>) and this verifies it against
+// Supabase before completing the upgrade -- same identity check as
+// requireAuth in middleware/auth.js, never a second parallel auth mechanism
+// just for calls.
 import { WebSocketServer } from 'ws';
 import { query, withTransaction } from '../lib/db.js';
 import { notify } from '../services/notification.service.js';
-import { sessionMiddleware } from '../middleware/session.js';
+import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 
 const WS_PATH = '/ws/calls';
 const RING_TIMEOUT_MS = 45_000;
@@ -331,30 +333,40 @@ async function cleanupSocketCalls(userId) {
 export function attachCallSignaling(httpServer) {
   const wss = new WebSocketServer({ noServer: true });
 
-  httpServer.on('upgrade', (req, socket, head) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+  httpServer.on('upgrade', async (req, socket, head) => {
+    const { pathname, searchParams } = new URL(req.url, 'http://localhost');
     if (pathname !== WS_PATH) return; // leave any other upgrade alone
 
-    sessionMiddleware(req, {}, async () => {
-      const userId = req.session?.userId;
-      if (!userId) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      const { rows } = await query(
-        `SELECT id, first_name, last_name, status FROM users WHERE id = $1`,
-        [userId]
-      );
-      const user = rows[0];
-      if (!user || user.status !== 'active') {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req, user);
-      });
+    const token = searchParams.get('token');
+    if (!token) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    let supaUser;
+    try {
+      const { data, error } = await supabaseAdmin.auth.getUser(token);
+      if (error || !data?.user) throw error || new Error('no user');
+      supaUser = data.user;
+    } catch {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const { rows } = await query(
+      `SELECT id, first_name, last_name, status FROM users WHERE supabase_user_id = $1`,
+      [supaUser.id]
+    );
+    const user = rows[0];
+    if (!user || user.status !== 'active') {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req, user);
     });
   });
 
