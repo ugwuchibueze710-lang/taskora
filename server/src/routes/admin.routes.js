@@ -12,6 +12,7 @@ import { transitionJob, notifyJobParties } from '../services/job.service.js';
 import { notify } from '../services/notification.service.js';
 import { computeProviderTier, TIER_LABEL, freeDistributionEndsAt } from '../services/provider-tier.service.js';
 import { getCategoryDemandOverview } from '../services/category-demand.service.js';
+import { resolveOpenEscalationsForUser } from '../services/agency.service.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -154,8 +155,8 @@ router.get(
       where = `WHERE lower(coalesce(business_name,'') || ' ' || coalesce(display_name,'')) LIKE $1`;
     }
     // has_active_pro mirrors the exact EXISTS subquery search.service.js uses
-    // for ranking — real, current Stripe-driven subscription state, not just
-    // the denormalized is_pro flag — so this view can never show a provider
+    // for ranking â real, current Stripe-driven subscription state, not just
+    // the denormalized is_pro flag â so this view can never show a provider
     // as "priority" when they wouldn't actually rank as one.
     const { rows } = await query(
       `SELECT p.*, u.email, u.first_name, u.last_name,
@@ -241,7 +242,7 @@ router.post(
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const { rows } = await query(
       `INSERT INTO categories (slug, name, icon, sort_order) VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *`,
-      [slug, name, icon || '🛠️', sortOrder]
+      [slug, name, icon || 'ð ï¸', sortOrder]
     );
     res.status(201).json({ category: rows[0] });
   })
@@ -396,7 +397,7 @@ router.post(
     // Do the money-moving / job-state side effect FIRST, and only mark the dispute
     // "resolved" if it actually succeeds. If refundPayment throws (Stripe error,
     // network issue), the dispute must stay open rather than being permanently
-    // marked resolved_refund for a refund that never happened — see the identical
+    // marked resolved_refund for a refund that never happened â see the identical
     // fix applied to job.routes.js's /cancel and /decline handlers.
     if (resolution === 'resolved_refund') {
       await refundPayment(dispute.job_id, 'Dispute resolved with refund');
@@ -471,7 +472,7 @@ router.get(
 );
 
 // ---- Category demand (per-city featured-category system) ----
-// Read-only view over category-demand.service.js's real search-event data —
+// Read-only view over category-demand.service.js's real search-event data â
 // the same rolling window and source of truth the home page's featured
 // section uses, never a separate/duplicated computation.
 router.get(
@@ -534,6 +535,10 @@ router.post(
       data: {},
     });
     await logAdminAction({ adminUserId: req.user.id, actionType: 'support_reply', targetType: 'user', targetId: req.params.userId });
+    // A human just handled this thread directly (whether or not it ever hit
+    // the Agency tab) -- close out any open escalation so it doesn't sit
+    // "open" forever once it's genuinely done.
+    await resolveOpenEscalationsForUser(req.params.userId, req.user.id);
     res.status(201).json({ message: rows[0] });
   })
 );
