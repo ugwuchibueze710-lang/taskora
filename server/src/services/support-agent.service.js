@@ -104,6 +104,9 @@ export async function handleIncomingSupportMessage({ userId, userMessageId, body
       summary: decision.reason,
       detail: { userMessageId, replyMessageId: rows[0].id, question: body, reply: decision.reply },
       relatedUserId: userId,
+      // Already fully handled -- nothing for an admin to do, so this belongs
+      // in "Recently handled" immediately rather than sitting open forever.
+      status: 'auto_resolved',
     });
   } else {
     await createAgencyItem({
