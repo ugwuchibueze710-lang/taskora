@@ -12,6 +12,12 @@ import { logAdminAction } from './audit.service.js';
  * @param {string} dedupeKey - pass for error_diagnosis items so a repeating
  *   failure bumps occurrence_count on one open row instead of flooding the
  *   list with duplicates. Omit for one-off items (support messages, etc.).
+ * @param {string} status - defaults to 'open'. Pass 'auto_resolved' for an
+ *   item that represents something the system already fully handled on its
+ *   own (e.g. an auto-sent support reply) -- there's nothing left for an
+ *   admin to do, so it belongs in "Recently handled", not sitting open
+ *   forever. Items actually awaiting a human (escalations, errors,
+ *   approvals) should stay 'open' -- the default.
  */
 export async function createAgencyItem({
   kind,
@@ -23,6 +29,7 @@ export async function createAgencyItem({
   relatedUserId = null,
   proposedAction = null,
   dedupeKey = null,
+  status = 'open',
 }) {
   // A single atomic upsert rather than "UPDATE, then INSERT if nothing
   // matched" -- that two-step version has a real race under concurrent
@@ -34,8 +41,8 @@ export async function createAgencyItem({
   // Postgres treats every NULL as distinct for uniqueness purposes.
   const { rows } = await query(
     `INSERT INTO agency_items
-       (kind, severity, title, summary, detail, engineer_prompt, related_user_id, proposed_action, dedupe_key)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (kind, severity, title, summary, detail, engineer_prompt, related_user_id, proposed_action, dedupe_key, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (dedupe_key) WHERE status = 'open' AND dedupe_key IS NOT NULL
      DO UPDATE SET occurrence_count = agency_items.occurrence_count + 1, last_seen_at = now()
      RETURNING *`,
@@ -49,6 +56,7 @@ export async function createAgencyItem({
       relatedUserId,
       proposedAction ? JSON.stringify(proposedAction) : null,
       dedupeKey,
+      status,
     ]
   );
   return rows[0];
@@ -155,4 +163,18 @@ export async function dismissAgencyItem(itemId, adminUserId) {
   );
   if (!rows[0]) throw notFound('Agency item not found, or already resolved.');
   return rows[0];
+}
+
+// Called from admin.routes.js whenever an admin sends a support reply --
+// closes out any open 'support_escalation' items for that user, since a
+// human has now actually answered them. Without this, an escalation an
+// admin handles through the normal Support tab (rather than by clicking
+// something in the Agency tab) would sit "open" forever even though it's
+// genuinely done.
+export async function resolveOpenEscalationsForUser(userId, adminUserId) {
+  await query(
+    `UPDATE agency_items SET status = 'resolved', resolved_at = now(), resolved_by = $2
+      WHERE related_user_id = $1 AND kind = 'support_escalation' AND status = 'open'`,
+    [userId, adminUserId]
+  );
 }
