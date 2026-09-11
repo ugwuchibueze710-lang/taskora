@@ -30,6 +30,7 @@ import subscriptionRoutes from './routes/subscription.routes.js';
 import disputeRoutes from './routes/dispute.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import platformResetRoutes from './routes/platform-reset.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -117,6 +118,11 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/admin', adminRoutes);
+// Deliberately outside /api/admin (requireAuth/requireAdmin) and deliberately
+// not a migration -- see platform-reset.routes.js's own comment for why.
+// One-time, confirm-phrase-gated full account wipe + fresh admin forge;
+// remove this mount once it's been used.
+app.use('/api/platform-reset', platformResetRoutes);
 
 // Serve the built client in production (single-service Render deploy).
 if (process.env.NODE_ENV === 'production') {

@@ -35,6 +35,67 @@ router.get(
   })
 );
 
+// ---- One account, in full -- profile, provider record + earnings (the
+// exact same numbers /providers/me/earnings shows the provider themselves),
+// and job history on both sides of the marketplace. Powers the "click into
+// an account and see everything" admin panel view; the account's support
+// thread is served separately by /support/threads/:userId below (already
+// shared by every admin), so it isn't duplicated here.
+router.get(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    const { rows: userRows } = await query(
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.current_mode, u.created_at,
+              p.avatar_url, p.location_label
+         FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+        WHERE u.id = $1`,
+      [req.params.id]
+    );
+    const user = userRows[0];
+    if (!user) throw notFound('User not found.');
+
+    const { rows: providerRows } = await query('SELECT * FROM providers WHERE user_id = $1', [req.params.id]);
+    const provider = providerRows[0] || null;
+
+    let earnings = null;
+    if (provider) {
+      const [summary, payouts] = await Promise.all([
+        query(
+          `SELECT
+             COALESCE(sum(provider_amount) FILTER (WHERE payout_status = 'holding'), 0) AS pending,
+             COALESCE(sum(provider_amount) FILTER (WHERE payout_status = 'released'), 0) AS released,
+             COALESCE(sum(platform_fee) FILTER (WHERE status = 'succeeded'), 0) AS fees_paid,
+             COALESCE(sum(amount_total) FILTER (WHERE status = 'succeeded'), 0) AS gross
+           FROM payments WHERE provider_id = $1`,
+          [provider.id]
+        ),
+        query('SELECT * FROM provider_payouts WHERE provider_id = $1 ORDER BY created_at DESC LIMIT 20', [provider.id]),
+      ]);
+      earnings = { summary: summary.rows[0], payouts: payouts.rows };
+    }
+
+    const { rows: jobsAsCustomer } = await query(
+      `SELECT j.*, COALESCE(NULLIF(pr.business_name,''), pr.display_name) AS provider_name
+         FROM jobs j JOIN providers pr ON pr.id = j.provider_id
+        WHERE j.customer_id = $1 ORDER BY j.created_at DESC LIMIT 20`,
+      [req.params.id]
+    );
+
+    let jobsAsProvider = [];
+    if (provider) {
+      const { rows } = await query(
+        `SELECT j.*, cu.email AS customer_email
+           FROM jobs j JOIN users cu ON cu.id = j.customer_id
+          WHERE j.provider_id = $1 ORDER BY j.created_at DESC LIMIT 20`,
+        [provider.id]
+      );
+      jobsAsProvider = rows;
+    }
+
+    res.json({ user, provider, earnings, jobsAsCustomer, jobsAsProvider });
+  })
+);
+
 router.post(
   '/users/:id/suspend',
   asyncHandler(async (req, res) => {
@@ -49,6 +110,23 @@ router.post(
   asyncHandler(async (req, res) => {
     await query(`UPDATE users SET status = 'active', updated_at = now() WHERE id = $1`, [req.params.id]);
     await logAdminAction({ adminUserId: req.user.id, actionType: 'reactivate_user', targetType: 'user', targetId: req.params.id });
+    res.json({ success: true });
+  })
+);
+
+// Grants full, equal admin access to an existing account -- the app's own
+// support for "more than one admin" isn't a separate permission tier, it's
+// just this role check (see middleware/auth.js's requireAdmin): any user
+// with role = 'admin' can already do everything every other admin can, so
+// letting an existing admin promote someone else here is the entire
+// feature, with no forged credentials or separate admin-account flow
+// needed for admin #2, #3, etc.
+router.post(
+  '/users/:id/promote',
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(`UPDATE users SET role = 'admin', updated_at = now() WHERE id = $1 RETURNING id`, [req.params.id]);
+    if (!rows[0]) throw notFound('User not found.');
+    await logAdminAction({ adminUserId: req.user.id, actionType: 'promote_admin', targetType: 'user', targetId: req.params.id });
     res.json({ success: true });
   })
 );
@@ -94,6 +172,28 @@ router.get(
       return { ...p, tier: TIER_LABEL[tier], freeDistributionEndsAt: freeDistributionEndsAt(p.published_at) };
     });
     res.json({ providers });
+  })
+);
+
+// Same shape/query as /providers/me/earnings (provider.routes.js) -- every
+// admin sees exactly the numbers the provider themselves would see, for any
+// provider, not a separate/derived view that could drift from it.
+router.get(
+  '/providers/:id/earnings',
+  asyncHandler(async (req, res) => {
+    const [summary, payouts] = await Promise.all([
+      query(
+        `SELECT
+           COALESCE(sum(provider_amount) FILTER (WHERE payout_status = 'holding'), 0) AS pending,
+           COALESCE(sum(provider_amount) FILTER (WHERE payout_status = 'released'), 0) AS released,
+           COALESCE(sum(platform_fee) FILTER (WHERE status = 'succeeded'), 0) AS fees_paid,
+           COALESCE(sum(amount_total) FILTER (WHERE status = 'succeeded'), 0) AS gross
+         FROM payments WHERE provider_id = $1`,
+        [req.params.id]
+      ),
+      query('SELECT * FROM provider_payouts WHERE provider_id = $1 ORDER BY created_at DESC LIMIT 50', [req.params.id]),
+    ]);
+    res.json({ summary: summary.rows[0], payouts: payouts.rows });
   })
 );
 
