@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
 import { attachCallSignaling } from './realtime/call-signaling.js';
+import { captureServerError } from './services/error-monitor.service.js';
 
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -30,6 +31,7 @@ import subscriptionRoutes from './routes/subscription.routes.js';
 import disputeRoutes from './routes/dispute.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import agencyRoutes from './routes/agency.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -116,6 +118,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/disputes', disputeRoutes);
 app.use('/api/support', supportRoutes);
+// Mounted before the broader /api/admin prefix so it's matched
+// unambiguously, rather than relying on adminRoutes falling through to it.
+app.use('/api/admin/agency', agencyRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Serve the built client in production (single-service Render deploy).
@@ -169,6 +174,11 @@ app.use((err, req, res, next) => {
   }
 
   console.error('Unhandled error:', err);
+  // Fire-and-forget: captureServerError has its own internal try/catch and
+  // must never delay or risk this response. Every genuine 500 (everything
+  // that reaches this far, past all the client-mistake branches above) gets
+  // logged to the Agency tab with a ready-to-paste engineer breakdown.
+  captureServerError(err, req);
   res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
 });
 

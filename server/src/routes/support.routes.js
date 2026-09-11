@@ -4,6 +4,7 @@ import { query } from '../lib/db.js';
 import { asyncHandler } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { requireAuth } from '../middleware/auth.js';
+import { handleIncomingSupportMessage } from '../services/support-agent.service.js';
 
 const router = Router();
 
@@ -41,6 +42,18 @@ router.post(
       [req.user.id, req.body.body]
     );
     res.status(201).json({ message: rows[0] });
+
+    // Runs after the response is sent -- the customer's message is already
+    // saved and returned; the Agency support agent deciding whether to
+    // auto-answer or escalate must never add latency to sending a message,
+    // and its own errors are fully contained internally (see
+    // support-agent.service.js) so they can never surface here.
+    handleIncomingSupportMessage({
+      userId: req.user.id,
+      userMessageId: rows[0].id,
+      body: req.body.body,
+      userName: `${req.user.first_name} ${req.user.last_name}`.trim(),
+    }).catch((err) => console.error('support-agent failed:', err.message));
   })
 );
 

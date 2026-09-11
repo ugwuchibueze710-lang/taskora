@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client.js';
 
-const TABS = ['Analytics', 'Users', 'Providers', 'Categories', 'Category Demand', 'Jobs', 'Payments', 'Disputes', 'Support', 'Reviews', 'Pro & Boost'];
+const TABS = ['Analytics', 'Agency', 'Users', 'Providers', 'Categories', 'Category Demand', 'Jobs', 'Payments', 'Disputes', 'Support', 'Reviews', 'Pro & Boost'];
 
 export default function AdminPage() {
   const [tab, setTab] = useState('Analytics');
+  // Polled independently of the Agency tab itself so the badge shows up
+  // ("every fix will be notified there") even while an admin is sitting on
+  // a different tab, not just after they click into Agency.
+  const [agencyCounts, setAgencyCounts] = useState(null);
+  useEffect(() => {
+    const load = () => api.get('/admin/agency/counts').then(({ data }) => setAgencyCounts(data)).catch(() => {});
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div>
@@ -12,12 +22,16 @@ export default function AdminPage() {
       <div className="flex gap-1 mb-5 overflow-x-auto scrollbar-thin">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium ${tab === t ? 'bg-ink-900 text-white' : 'bg-white border border-ink-900/10 hover:bg-ink-900/5'}`}>
+            className={`relative whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium ${tab === t ? 'bg-ink-900 text-white' : 'bg-white border border-ink-900/10 hover:bg-ink-900/5'}`}>
             {t}
+            {t === 'Agency' && agencyCounts?.openTotal > 0 && (
+              <span className="ml-1.5 rounded-full bg-ember-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{agencyCounts.openTotal}</span>
+            )}
           </button>
         ))}
       </div>
       {tab === 'Analytics' && <AnalyticsTab />}
+      {tab === 'Agency' && <AgencyTab />}
       {tab === 'Users' && <UsersTab />}
       {tab === 'Providers' && <ProvidersTab />}
       {tab === 'Categories' && <CategoriesTab />}
@@ -123,6 +137,227 @@ function AnalyticsTab() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+const SEVERITY_BADGE = {
+  info: 'bg-sky-100 text-sky-700',
+  warning: 'bg-amber-100 text-amber-700',
+  critical: 'bg-red-100 text-red-700',
+};
+
+const KIND_LABEL = {
+  support_auto_reply: 'Auto-handled support message',
+  support_escalation: 'Support message needs you',
+  error_diagnosis: 'Server error',
+  action_suggestion: 'Suggested action',
+};
+
+function timeAgo(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+// The "Agency window" -- every fix the support/error agents made on their
+// own, every one-click approval they're waiting on, and every problem they
+// couldn't handle themselves shows up here, with a ready-to-paste prompt for
+// the software engineer (you) on anything that needs real code work. See
+// server/src/services/agency.service.js for the full design rationale.
+function AgencyTab() {
+  const [items, setItems] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [enabled, setEnabled] = useState(null);
+  const [toggling, setToggling] = useState(false);
+
+  const load = () => api.get('/admin/agency/items').then(({ data }) => setItems(data.items));
+  useEffect(() => {
+    load();
+    api.get('/admin/agency/settings').then(({ data }) => setEnabled(data.enabled));
+    const interval = setInterval(load, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggle = async () => {
+    setToggling(true);
+    try {
+      const { data } = await api.post('/admin/agency/settings', { enabled: !enabled });
+      setEnabled(data.enabled);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const act = async (id, action) => {
+    setBusyId(id);
+    try {
+      await api.post(`/admin/agency/items/${id}/${action}`);
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const diagnose = async (id) => {
+    setBusyId(id);
+    try {
+      await api.post(`/admin/agency/items/${id}/diagnose`);
+      await load();
+      setExpandedId(id);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const copyPrompt = async (item) => {
+    try {
+      await navigator.clipboard.writeText(item.engineer_prompt);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setExpandedId(item.id); // clipboard blocked -- at least reveal the text to select manually
+    }
+  };
+
+  if (!items) return <p className="text-sm text-ink-700/60">Loading…</p>;
+
+  const needsApproval = items.filter((i) => i.status === 'open' && i.proposed_action);
+  const needsEngineer = items.filter((i) => i.status === 'open' && i.engineer_prompt && !i.proposed_action);
+  const handled = items.filter((i) => i.status !== 'open').slice(0, 30);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-sm">Agency system {enabled === null ? '' : enabled ? 'is running' : 'is paused'}</p>
+            <p className="text-xs text-ink-700/50 mt-0.5">
+              {enabled
+                ? 'Watching support messages and server errors right now — this uses your Groq quota.'
+                : 'Turned off — no AI calls are being made. Support messages and errors just wait for you, like before.'}
+            </p>
+          </div>
+          <AgencyToggle checked={!!enabled} disabled={enabled === null || toggling} onChange={toggle} />
+        </div>
+      </Card>
+
+      <p className="text-xs text-ink-700/50">
+        Everything the support and error-monitoring agents noticed, handled on their own, or need you for. Support auto-replies
+        only ever answer stock questions; anything about a specific account, job, or payment always lands here for a human.
+        Code-level fixes are always drafted for you, never applied automatically — this app's server has no ability to push
+        code changes to itself.
+      </p>
+
+      <AgencySection title="Needs your approval" emptyText="Nothing waiting on a one-click approval right now.">
+        {needsApproval.map((item) => (
+          <Card key={item.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-sm">{item.title}</p>
+                {item.summary && <p className="text-xs text-ink-700/60 mt-0.5">{item.summary}</p>}
+                <p className="text-[11px] text-ink-700/40 mt-1">{timeAgo(item.created_at)} · proposed: {item.proposed_action.actionType}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button disabled={busyId === item.id} onClick={() => act(item.id, 'approve')}
+                  className="rounded-full border border-emerald-200 px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">Approve</button>
+                <button disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}
+                  className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Reject</button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </AgencySection>
+
+      <AgencySection title="Needs the engineer (you)" emptyText="Nothing waiting on you right now.">
+        {needsEngineer.map((item) => (
+          <Card key={item.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${SEVERITY_BADGE[item.severity] || SEVERITY_BADGE.info}`}>{item.severity}</span>
+                  <span className="text-[11px] text-ink-700/40">{KIND_LABEL[item.kind] || item.kind}</span>
+                  {item.occurrence_count > 1 && <span className="text-[11px] text-ink-700/40">· happened {item.occurrence_count}×</span>}
+                </div>
+                <p className="font-medium text-sm mt-1">{item.title}</p>
+                {item.summary && <p className="text-xs text-ink-700/60 mt-0.5">{item.summary}</p>}
+                {item.related_user_email && <p className="text-[11px] text-ink-700/40 mt-1">{item.first_name} {item.last_name} ({item.related_user_email})</p>}
+                <p className="text-[11px] text-ink-700/40 mt-1">last seen {timeAgo(item.last_seen_at)}</p>
+
+                {expandedId === item.id && (
+                  <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-ink-900/[0.04] p-2 text-[11px] leading-relaxed max-h-72 overflow-y-auto">{item.engineer_prompt}</pre>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 shrink-0 items-end">
+                <button onClick={() => setExpandedId(expandedId === item.id ? null : item.id)} className="rounded-full border border-ink-900/15 px-3 py-1 text-xs hover:bg-ink-900/5">
+                  {expandedId === item.id ? 'Hide' : 'View'}
+                </button>
+                <button onClick={() => copyPrompt(item)} className="rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-white hover:bg-ink-800">
+                  {copiedId === item.id ? 'Copied!' : 'Copy prompt for Claude'}
+                </button>
+                {item.kind === 'error_diagnosis' && (
+                  <button disabled={busyId === item.id} onClick={() => diagnose(item.id)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-50">
+                    {busyId === item.id ? 'Thinking…' : 'Diagnose with AI'}
+                  </button>
+                )}
+                <button disabled={busyId === item.id} onClick={() => act(item.id, 'dismiss')} className="text-[11px] text-ink-700/40 hover:underline">Dismiss</button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </AgencySection>
+
+      <AgencySection title="Recently handled" emptyText="Nothing resolved yet.">
+        {handled.map((item) => (
+          <Card key={item.id}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm">{item.title}</p>
+                <p className="text-[11px] text-ink-700/40 mt-0.5">{KIND_LABEL[item.kind] || item.kind} · {item.status} · {timeAgo(item.resolved_at || item.created_at)}</p>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </AgencySection>
+    </div>
+  );
+}
+
+// A real switch, not a checkbox with CSS on top: track slides between two
+// colors, knob glides across with a spring-ish ease, and a small dot pulses
+// while running so "it's actively on" reads at a glance, not just on click.
+function AgencyToggle({ checked, disabled, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-300 ease-out disabled:opacity-50
+        ${checked ? 'bg-emerald-500' : 'bg-ink-900/20'}`}
+    >
+      <span
+        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+          ${checked ? 'translate-x-[26px]' : 'translate-x-1'}`}
+      />
+      {checked && (
+        <span className="absolute left-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-white/80 animate-pulse" />
+      )}
+    </button>
+  );
+}
+
+function AgencySection({ title, emptyText, children }) {
+  const count = children?.length || 0;
+  return (
+    <div>
+      <h3 className="font-medium mb-2">{title} {count > 0 && <span className="text-xs text-ink-700/40">({count})</span>}</h3>
+      {count === 0 ? <p className="text-sm text-ink-700/50">{emptyText}</p> : <div className="space-y-2">{children}</div>}
     </div>
   );
 }
