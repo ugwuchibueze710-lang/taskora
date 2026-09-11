@@ -16,6 +16,15 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // "Reply in Support" on an Agency escalation switches to the Support tab
+  // and opens that user's thread directly, instead of making the admin find
+  // it again in the list themselves.
+  const [supportUserToOpen, setSupportUserToOpen] = useState(null);
+  const openSupportThread = (userId) => {
+    setSupportUserToOpen(userId);
+    setTab('Support');
+  };
+
   return (
     <div>
       <h1 className="font-display text-2xl mb-4">Admin</h1>
@@ -31,7 +40,7 @@ export default function AdminPage() {
         ))}
       </div>
       {tab === 'Analytics' && <AnalyticsTab />}
-      {tab === 'Agency' && <AgencyTab />}
+      {tab === 'Agency' && <AgencyTab onOpenSupport={openSupportThread} />}
       {tab === 'Users' && <UsersTab />}
       {tab === 'Providers' && <ProvidersTab />}
       {tab === 'Categories' && <CategoriesTab />}
@@ -39,7 +48,7 @@ export default function AdminPage() {
       {tab === 'Jobs' && <JobsTab />}
       {tab === 'Payments' && <PaymentsTab />}
       {tab === 'Disputes' && <DisputesTab />}
-      {tab === 'Support' && <SupportTab />}
+      {tab === 'Support' && <SupportTab openUserId={supportUserToOpen} onOpened={() => setSupportUserToOpen(null)} />}
       {tab === 'Reviews' && <ReviewsTab />}
       {tab === 'Pro & Boost' && <SubscriptionsTab />}
     </div>
@@ -167,7 +176,7 @@ function timeAgo(iso) {
 // couldn't handle themselves shows up here, with a ready-to-paste prompt for
 // the software engineer (you) on anything that needs real code work. See
 // server/src/services/agency.service.js for the full design rationale.
-function AgencyTab() {
+function AgencyTab({ onOpenSupport }) {
   const [items, setItems] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -227,6 +236,7 @@ function AgencyTab() {
   if (!items) return <p className="text-sm text-ink-700/60">Loading…</p>;
 
   const needsApproval = items.filter((i) => i.status === 'open' && i.proposed_action);
+  const needsReply = items.filter((i) => i.status === 'open' && i.kind === 'support_escalation' && !i.proposed_action);
   const needsEngineer = items.filter((i) => i.status === 'open' && i.engineer_prompt && !i.proposed_action);
   const handled = items.filter((i) => i.status !== 'open').slice(0, 30);
 
@@ -267,6 +277,26 @@ function AgencyTab() {
                   className="rounded-full border border-emerald-200 px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">Approve</button>
                 <button disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}
                   className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">Reject</button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </AgencySection>
+
+      <AgencySection title="Needs a human reply" emptyText="No support messages waiting on a person right now.">
+        {needsReply.map((item) => (
+          <Card key={item.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium text-sm">{item.title}</p>
+                {item.detail?.question && <p className="text-xs text-ink-700/70 mt-1 italic">"{item.detail.question}"</p>}
+                {item.summary && <p className="text-xs text-ink-700/50 mt-0.5">{item.summary}</p>}
+                <p className="text-[11px] text-ink-700/40 mt-1">{timeAgo(item.created_at)}{item.related_user_email && ` · ${item.first_name} ${item.last_name} (${item.related_user_email})`}</p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0 items-end">
+                <button onClick={() => onOpenSupport(item.related_user_id)}
+                  className="rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-white hover:bg-ink-800">Reply in Support</button>
+                <button disabled={busyId === item.id} onClick={() => act(item.id, 'dismiss')} className="text-[11px] text-ink-700/40 hover:underline">Dismiss</button>
               </div>
             </div>
           </Card>
@@ -679,7 +709,7 @@ function DisputesTab() {
 // General "Contact Taskora" support inbox -- separate from Disputes above,
 // which are job-scoped reports. Every logged-in user (customer or provider
 // mode) can message here at any time; this is where those land.
-function SupportTab() {
+function SupportTab({ openUserId, onOpened }) {
   const [threads, setThreads] = useState([]);
   const [activeUserId, setActiveUserId] = useState(null);
   const [thread, setThread] = useState(null);
@@ -694,6 +724,16 @@ function SupportTab() {
     const { data } = await api.get(`/admin/support/threads/${userId}`);
     setThread(data);
   };
+
+  // Arriving here from an Agency escalation's "Reply in Support" button --
+  // open straight to that person's thread instead of making the admin find
+  // it in the list themselves.
+  useEffect(() => {
+    if (!openUserId) return;
+    openThread(openUserId);
+    onOpened?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openUserId]);
 
   const sendReply = async (e) => {
     e.preventDefault();
