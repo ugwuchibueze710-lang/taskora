@@ -6,8 +6,14 @@ import { createClient } from '@supabase/supabase-js';
 // a Bearer token. Only the anon key lives here; it's meant to be public (it
 // has no power beyond what each table's Row Level Security policy allows)
 // unlike the service role key, which only ever runs on the server.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Strip ALL whitespace, not just the ends: a value pasted into a dashboard's
+// env var UI can carry a newline or stray whitespace anywhere in the middle,
+// and a plain .trim() only catches whitespace at the two edges -- confirmed
+// in production, where an embedded newline survived .trim() and made every
+// browser fetch to Supabase fail with an opaque header error. See the
+// matching guard in server/src/lib/supabaseAdmin.js.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\s+/g, '');
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.replace(/\s+/g, '');
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
