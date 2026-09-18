@@ -40,8 +40,25 @@ export default function ProviderDashboardPage() {
   const freeWindowEndsAt = publishedAt ? new Date(publishedAt.getTime() + SIX_MONTHS_MS) : null;
   const inFreeWindow = freeWindowEndsAt ? Date.now() < freeWindowEndsAt.getTime() : false;
 
+  const missingLocation = provider.base_lat == null || provider.base_lng == null;
+
   return (
     <div className="space-y-6">
+      {missingLocation && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold text-red-800">⚠️ No service area location set</p>
+            <p className="text-xs text-red-700 mt-0.5">
+              Customers only see providers within their search radius, and search can't place you without a real
+              location on file — right now you don't show up in any location-based search, no matter how close a
+              customer is.
+            </p>
+          </div>
+          <Link to="/provider/availability" className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 whitespace-nowrap">
+            Set my location
+          </Link>
+        </div>
+      )}
       {!isPro && subStatus && (
         inFreeWindow ? (
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 flex items-center justify-between gap-3 flex-wrap">
