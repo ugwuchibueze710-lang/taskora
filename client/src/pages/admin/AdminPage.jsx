@@ -297,8 +297,7 @@ function AgencyTab({ onOpenSupport }) {
                 <button onClick={() => onOpenSupport(item.related_user_id)}
                   className="rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-white hover:bg-ink-800">Reply in Support</button>
                 <button disabled={busyId === item.id} onClick={() => act(item.id, 'dismiss')} className="text-[11px] text-ink-700/40 hover:underline">Dismiss</button>
-              </div>
-            </div>
+              </div>            </div>
           </Card>
         ))}
       </AgencySection>
@@ -563,16 +562,37 @@ function ProvidersTab() {
       {providers.map((p) => {
         const badge = TIER_BADGE[p.tier] || TIER_BADGE.non_priority;
         const earnings = earningsById[p.id];
+        // base_lat/base_lng/base_location_label and profile_completeness come
+        // straight through from `SELECT p.*` in GET /admin/providers -- the
+        // exact same columns the provider's own dashboard reads, so this can
+        // never drift from what the provider themselves sees or from what
+        // search.service.js actually uses to place them.
+        const hasLocation = p.base_lat != null && p.base_lng != null;
+        const mapUrl = hasLocation ? `https://www.google.com/maps?q=${p.base_lat},${p.base_lng}` : null;
         return (
           <Card key={p.id}>
             <div className="flex items-center justify-between gap-2">
               <button onClick={() => toggle(p)} className="text-left flex-1 min-w-0">
                 <p className="font-medium">{p.business_name || p.display_name} {p.verified && '✓'}</p>
                 <p className="text-xs text-ink-700/60">{p.email} · {p.status} · rating {p.rating_avg}</p>
-                <div className="mt-1 flex items-center gap-2">
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span>
                   {p.tier === 'free_distribution' && p.freeDistributionEndsAt && (
                     <span className="text-[11px] text-ink-700/50">until {new Date(p.freeDistributionEndsAt).toLocaleDateString()}</span>
+                  )}
+                  <span className="text-[11px] text-ink-700/50">setup {p.profile_completeness}%</span>
+                  {hasLocation ? (
+                    <a
+                      href={mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[11px] text-sky-700 hover:underline"
+                    >
+                      📍 {p.base_location_label || 'View on map'}
+                    </a>
+                  ) : (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">No location set</span>
                   )}
                 </div>
               </button>
@@ -596,8 +616,7 @@ function ProvidersTab() {
                     <MiniStat label="Gross charged (Stripe)" value={money(earnings.summary.gross)} />
                     <MiniStat label="Taskora fees kept" value={money(earnings.summary.fees_paid)} />
                   </div>
-                )}
-              </div>
+                )}              </div>
             )}
           </Card>
         );
