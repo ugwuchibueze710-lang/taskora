@@ -330,6 +330,25 @@ router.post(
     const providerId = req.user.provider_id;
     const { rows } = await query('SELECT provider_id FROM provider_categories WHERE provider_id = $1 LIMIT 1', [providerId]);
     if (!rows.length) throw badRequest('Choose at least one category before publishing.');
+    // A provider with no real coordinates on file is invisible to every
+    // location-scoped search -- searchProviders() fails a provider closed
+    // (see search.service.js) rather than matching everywhere, which was
+    // the earlier, worse bug. The onboarding wizard and the availability
+    // page both already require picking a real place before their own
+    // Continue/Save button, but THIS endpoint is the one place that
+    // actually flips status to 'active' -- both for a first publish and
+    // for resuming after /me/pause -- so it has to be the one place that
+    // enforces this, not just whichever client screen happens to call it.
+    // Without this check, a legacy account that onboarded before the
+    // location picker existed, or any future caller, can go "active" with
+    // no location and become permanently, silently unfindable -- exactly
+    // what happened in production with a real Evansville, IN provider.
+    const { rows: locRows } = await query('SELECT base_lat, base_lng FROM providers WHERE id = $1', [providerId]);
+    if (locRows[0]?.base_lat == null || locRows[0]?.base_lng == null) {
+      throw badRequest(
+        "Set your service area location before publishing -- customers search by location, and a profile with none on file is never shown."
+      );
+    }
     const updated = await query(
       `UPDATE providers SET status = 'active', published_at = COALESCE(published_at, now()), updated_at = now()
        WHERE id = $1 RETURNING *`,
