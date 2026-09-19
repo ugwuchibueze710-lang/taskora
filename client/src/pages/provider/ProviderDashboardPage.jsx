@@ -44,6 +44,7 @@ export default function ProviderDashboardPage() {
 
   return (
     <div className="space-y-6">
+      <AdminSetupBanner />
       {missingLocation && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -136,6 +137,124 @@ export default function ProviderDashboardPage() {
       </div>
     </div>
   );
+}
+
+// Live "mm:ss" (or "Hh MMm" once over an hour) countdown to a future
+// timestamp. Ticks locally every second rather than re-fetching the grant
+// just to update a clock -- the banner still polls for the real status
+// change (approved/declined/expired) separately.
+function useCountdown(targetIso) {
+  const [msLeft, setMsLeft] = useState(() => (targetIso ? new Date(targetIso).getTime() - Date.now() : 0));
+  useEffect(() => {
+    if (!targetIso) return;
+    const target = new Date(targetIso).getTime();
+    const tick = () => setMsLeft(Math.max(0, target - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetIso]);
+  if (!targetIso) return '';
+  const totalSeconds = Math.floor(msLeft / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// A Taskora admin can ask to finish this provider's setup for them -- but
+// nothing actually happens until the provider approves it right here. This
+// banner is the whole of that consent step: it polls for a live request,
+// shows who's asking and how long they have to answer, and lets the
+// provider approve, decline, or (once approved) cut off access early.
+function AdminSetupBanner() {
+  const [grant, setGrant] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      api.get('/providers/me/edit-requests').then(({ data }) => {
+        if (!cancelled) setGrant(data.grant);
+      }).catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const requestCountdown = useCountdown(grant?.status === 'pending' ? grant.request_expires_at : null);
+  const accessCountdown = useCountdown(grant?.status === 'approved' ? grant.access_expires_at : null);
+
+  if (!grant) return null;
+
+  const adminName = [grant.admin_first_name, grant.admin_last_name].filter(Boolean).join(' ') || 'A Taskora admin';
+
+  const respond = async (action) => {
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/providers/me/edit-requests/${grant.id}/${action}`);
+      setGrant(data.grant ?? null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (grant.status === 'pending') {
+    return (
+      <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-violet-900">🔐 {adminName} wants to help finish your profile setup</p>
+          <p className="text-xs text-violet-700 mt-0.5">
+            Approving gives them a time-boxed window to edit your business info, categories, services, location, and
+            photos on your behalf — everything updates on your dashboard as they go. This request expires in{' '}
+            {requestCountdown} if you don't respond.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            disabled={busy}
+            onClick={() => respond('decline')}
+            className="rounded-full border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-60 whitespace-nowrap"
+          >
+            Decline
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => respond('approve')}
+            className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60 whitespace-nowrap"
+          >
+            Approve
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (grant.status === 'approved') {
+    return (
+      <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-violet-900">🔐 {adminName} is currently editing your setup</p>
+          <p className="text-xs text-violet-700 mt-0.5">
+            Their access closes automatically in {accessCountdown}. You can end it sooner at any time.
+          </p>
+        </div>
+        <button
+          disabled={busy}
+          onClick={() => respond('revoke')}
+          className="rounded-full border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-60 whitespace-nowrap"
+        >
+          Revoke access
+        </button>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function StatCard({ label, value }) {
