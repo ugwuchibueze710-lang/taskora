@@ -4,6 +4,7 @@ import api from '../../api/client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import StarRating from '../../components/StarRating.jsx';
 import Spinner from '../../components/Spinner.jsx';
+import SafeImage from '../../components/SafeImage.jsx';
 
 const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 182;
 
@@ -98,28 +99,46 @@ export default function ProviderDashboardPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
-            <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${provider.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-900/10 text-ink-700/60'}`}>
-              {provider.status}
-            </span>
+      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex gap-4">
+            {/* Same profile picture, same fallback letter, as the public
+                storefront (ProviderProfilePage) -- this is exactly what
+                customers see, not a separate dashboard-only image. */}
+            <div className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-2xl font-display text-ember-600">
+              <SafeImage src={provider.image_url} className="h-full w-full object-cover" fallback={(provider.business_name || provider.display_name)?.[0]?.toUpperCase() || '?'} />
+            </div>
+            <div>
+              <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
+                <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${provider.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-900/10 text-ink-700/60'}`}>
+                  {provider.status}
+                </span>
+              </div>
+              {/* Same description customers see on the storefront -- full
+                  text, not truncated, straight from provider.description. */}
+              {provider.description && <p className="mt-2 text-sm text-ink-700/70 max-w-xl">{provider.description}</p>}
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Link to="/provider/services" className="rounded-full border border-ink-900/15 px-4 py-2 text-sm font-semibold hover:bg-ink-900/5 whitespace-nowrap">
+              Edit Profile
+            </Link>
+            {provider.status !== 'active' ? (
+              <Link to="/provider/onboarding" className="rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600 whitespace-nowrap">
+                Finish Setup
+              </Link>
+            ) : (
+              <button
+                onClick={async () => { await api.post('/providers/me/pause'); location.reload(); }}
+                className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5 whitespace-nowrap"
+              >
+                Pause Profile
+              </button>
+            )}
           </div>
         </div>
-        {provider.status !== 'active' ? (
-          <Link to="/provider/onboarding" className="rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600">
-            Finish Setup
-          </Link>
-        ) : (
-          <button
-            onClick={async () => { await api.post('/providers/me/pause'); location.reload(); }}
-            className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5"
-          >
-            Pause Profile
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
