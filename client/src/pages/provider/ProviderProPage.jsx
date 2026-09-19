@@ -35,11 +35,25 @@ export default function ProviderProPage() {
   return (
     <div className="max-w-2xl space-y-4">
       <h1 className="font-display text-2xl">Taskora Pro</h1>
-      <p className="text-sm text-ink-700/70">
-        Pro gives your profile priority placement above non-priority providers in relevant searches — it doesn't override
-        relevance or let a lower rating beat a higher-rated Pro provider; among Pro members, the best-rated match still
-        wins the top spot.
-      </p>
+
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ember-600">Why become a Pro Provider?</p>
+        <p className="font-display text-xl sm:text-2xl leading-snug text-ink-900">
+          Get more opportunities to earn with Taskora.
+        </p>
+        <p className="text-sm text-ink-700/70 leading-relaxed max-w-lg">
+          Pro Providers get increased visibility, more exposure to customers looking for services, and access to more
+          job opportunities.
+        </p>
+        <p className="text-sm text-ink-700/70 leading-relaxed max-w-lg">
+          Connect directly with customers, find new jobs, build your reputation, and grow your customer base.
+        </p>
+        <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 pt-1 font-display text-lg sm:text-xl text-ember-600">
+          <span>More visibility.</span>
+          <span>More leads.</span>
+          <span>More opportunities.</span>
+        </p>
+      </div>
 
       {active ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
