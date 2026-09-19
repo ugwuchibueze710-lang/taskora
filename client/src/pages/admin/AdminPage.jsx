@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client.js';
 
@@ -174,23 +174,43 @@ function AgencyTab({ onOpenSupport }) {
   const [expandedId, setExpandedId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [enabled, setEnabled] = useState(null);
-  const [toggling, setToggling] = useState(false);
+  const [autoScanEnabled, setAutoScanEnabled] = useState(null);
+  const [togglingReply, setTogglingReply] = useState(false);
+  const [togglingScan, setTogglingScan] = useState(false);
 
   const load = () => api.get('/admin/agency/items').then(({ data }) => setItems(data.items));
   useEffect(() => {
     load();
-    api.get('/admin/agency/settings').then(({ data }) => setEnabled(data.enabled));
+    api.get('/admin/agency/settings').then(({ data }) => {
+      setEnabled(data.enabled);
+      setAutoScanEnabled(data.autoScanEnabled);
+    });
     const interval = setInterval(load, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  const toggle = async () => {
-    setToggling(true);
+  // Two independent switches. Auto-reply answers support messages as they
+  // arrive; Auto-scan is the continuous sweep that keeps re-checking for
+  // anything still unanswered (a Groq hiccup, Auto-reply was briefly off,
+  // etc.) so nothing sits waiting forever. Either can run without the other,
+  // though Auto-scan has nothing to do if Auto-reply has never sent a reply.
+  const toggleReply = async () => {
+    setTogglingReply(true);
     try {
       const { data } = await api.post('/admin/agency/settings', { enabled: !enabled });
       setEnabled(data.enabled);
     } finally {
-      setToggling(false);
+      setTogglingReply(false);
+    }
+  };
+
+  const toggleScan = async () => {
+    setTogglingScan(true);
+    try {
+      const { data } = await api.post('/admin/agency/settings', { autoScanEnabled: !autoScanEnabled });
+      setAutoScanEnabled(data.autoScanEnabled);
+    } finally {
+      setTogglingScan(false);
     }
   };
 
@@ -237,22 +257,35 @@ function AgencyTab({ onOpenSupport }) {
       <Card>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-medium text-sm">Agency system {enabled === null ? '' : enabled ? 'is running' : 'is paused'}</p>
+            <p className="font-medium text-sm">Auto-reply {enabled === null ? '' : enabled ? 'is on' : 'is off'}</p>
             <p className="text-xs text-ink-700/50 mt-0.5">
               {enabled
-                ? 'Watching support messages and server errors right now — this uses your Groq quota.'
-                : 'Turned off — no AI calls are being made. Support messages and errors just wait for you, like before.'}
+                ? 'Answering support messages as they arrive, using each customer\'s real account context — this uses your Groq quota.'
+                : 'Turned off — no AI replies are sent. Support messages just wait for you, like before.'}
             </p>
           </div>
-          <AgencyToggle checked={!!enabled} disabled={enabled === null || toggling} onChange={toggle} />
+          <AgencyToggle checked={!!enabled} disabled={enabled === null || togglingReply} onChange={toggleReply} />
+        </div>
+        <div className="mt-3 pt-3 border-t border-ink-900/8 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-sm">Auto-scan {autoScanEnabled === null ? '' : autoScanEnabled ? 'is on' : 'is off'}</p>
+            <p className="text-xs text-ink-700/50 mt-0.5">
+              {autoScanEnabled
+                ? 'Continuously re-checking for any support message still waiting on a reply, so nothing gets left behind.'
+                : 'Turned off — messages only get triaged once, when they first arrive.'}
+            </p>
+          </div>
+          <AgencyToggle checked={!!autoScanEnabled} disabled={autoScanEnabled === null || togglingScan} onChange={toggleScan} />
         </div>
       </Card>
 
+      <AdminCommandPanel />
+
       <p className="text-xs text-ink-700/50">
         Everything the support and error-monitoring agents noticed, handled on their own, or need you for. Support auto-replies
-        only ever answer stock questions; anything about a specific account, job, or payment always lands here for a human.
-        Code-level fixes are always drafted for you, never applied automatically — this app's server has no ability to push
-        code changes to itself.
+        only ever answer stock questions or facts about the customer's own account; anything that needs a decision always
+        lands here for a human. Code-level fixes are always drafted for you, never applied automatically — this app's server
+        has no ability to push code changes to itself.
       </p>
 
       <AgencySection title="Needs your approval" emptyText="Nothing waiting on a one-click approval right now.">
@@ -345,6 +378,102 @@ function AgencyTab({ onOpenSupport }) {
         ))}
       </AgencySection>
     </div>
+  );
+}
+
+// The command box -- type an instruction, Agency looks things up and/or
+// acts on them for real (see server/src/services/agent-command.service.js).
+// Collapsed by default since most visits to this tab are just checking the
+// approval queue; expands into a small chat log once the admin starts
+// typing. Risky actions (suspend/delete/promote/refund/resolve-dispute/
+// hide-review) never run from here directly -- they show up in "Needs your
+// approval" above, and this panel just reports that a request was queued.
+function AdminCommandPanel() {
+  const [open, setOpen] = useState(false);
+  const [log, setLog] = useState([]); // [{role: 'user'|'assistant', content}]
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [log, open]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput('');
+    setSending(true);
+    const nextLog = [...log, { role: 'user', content: text }];
+    setLog(nextLog);
+    try {
+      const { data } = await api.post('/admin/agency/command', {
+        text,
+        history: log.slice(-12),
+      });
+      setLog([...nextLog, { role: 'assistant', content: data.reply }]);
+    } catch (err) {
+      setLog([...nextLog, { role: 'assistant', content: `Something went wrong: ${err.message}` }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between gap-3 text-left">
+        <div>
+          <p className="font-medium text-sm">Command Agency</p>
+          <p className="text-xs text-ink-700/50 mt-0.5">
+            Tell it what to do — look something up, reply to a customer, suspend an account, issue a refund — in plain English.
+          </p>
+        </div>
+        <span className={`text-ink-700/40 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="max-h-80 overflow-y-auto space-y-2 rounded-xl bg-ink-900/[0.03] p-3">
+            {log.length === 0 && (
+              <p className="text-xs text-ink-700/40 italic">
+                Try: "how many open disputes are there", "reply to the last message from Maria saying we're looking into it",
+                or "suspend the user test@example.com for spamming other users".
+              </p>
+            )}
+            {log.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                    m.role === 'user' ? 'bg-ink-900 text-white' : 'bg-white border border-ink-900/8 text-ink-900'
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {sending && <p className="text-xs text-ink-700/40 italic">Thinking…</p>}
+            <div ref={bottomRef} />
+          </div>
+          <form onSubmit={send} className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type a command…"
+              disabled={sending}
+              className="flex-1 rounded-full border border-ink-900/15 px-4 py-2 text-sm disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-50"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+    </Card>
   );
 }
 
