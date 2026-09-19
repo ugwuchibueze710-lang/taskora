@@ -1,6 +1,9 @@
 import { query } from '../lib/db.js';
 import { notFound, conflict, badRequest } from '../lib/errors.js';
 import { logAdminAction } from './audit.service.js';
+import { refundPayment } from './payment.service.js';
+import { transitionJob } from './job.service.js';
+import { notify } from './notification.service.js';
 
 /**
  * Creates (or, for a deduplicated error, bumps) one Agency item. This is the
@@ -99,22 +102,85 @@ export async function getAgencyCounts() {
   return { needsApproval: Number(r.needs_approval), needsEngineer: Number(r.needs_engineer), openTotal: Number(r.open_total) };
 }
 
-// A fixed, reversible allowlist -- deliberately small. Nothing here moves
-// money or touches source code; those always require a manual admin click
-// through the existing /admin routes (refund/dispute) or a human engineer
-// (this app's server has no git credentials and no writable deploy target
-// of its own, so "auto-apply a code fix" isn't something any agent running
-// inside this process could safely do even if we wanted it to -- see the
-// engineer_prompt path instead).
+// The allowlist of everything a one-click "Approve" in the Agency tab can
+// actually do. Originally just the three reversible, no-money actions
+// (suspend/reactivate/hide) -- widened so the admin-command box (see
+// agent-command.service.js) can propose the rest of what an admin can
+// already do by hand elsewhere in the panel, while keeping the same
+// guarantee: nothing here ever runs until a human clicks Approve on this
+// specific item. Each handler now takes the full proposed_action object
+// (not just a bare targetId) since several of these need more than one
+// field -- a refund needs a reason, a dispute resolution needs a
+// resolution + notes, etc. -- plus the approving admin's id, for the same
+// notify()/audit-trail treatment the equivalent manual admin.routes.js
+// handler already gives these.
 const SAFE_ACTIONS = {
-  suspend_user: async (targetId) => {
+  suspend_user: async ({ targetId }) => {
     await query(`UPDATE users SET status = 'suspended', updated_at = now() WHERE id = $1`, [targetId]);
   },
-  reactivate_user: async (targetId) => {
+  reactivate_user: async ({ targetId }) => {
     await query(`UPDATE users SET status = 'active', updated_at = now() WHERE id = $1`, [targetId]);
   },
-  hide_review: async (targetId) => {
+  hide_review: async ({ targetId }) => {
     await query('UPDATE reviews SET is_hidden = true WHERE id = $1', [targetId]);
+  },
+  suspend_provider: async ({ targetId }) => {
+    await query(`UPDATE providers SET status = 'suspended', updated_at = now() WHERE id = $1`, [targetId]);
+  },
+  reactivate_provider: async ({ targetId }) => {
+    await query(`UPDATE providers SET status = 'active', updated_at = now() WHERE id = $1`, [targetId]);
+  },
+  // Same soft-delete shape as admin.routes.js's DELETE /users/:id -- keeps
+  // the row (and every foreign key pointing at it) intact, just knocks the
+  // account out of active use and frees up its email for reuse.
+  delete_user: async ({ targetId }) => {
+    await query(`UPDATE users SET status = 'deleted', email = email || '.deleted.' || id, updated_at = now() WHERE id = $1`, [targetId]);
+  },
+  promote_user_to_admin: async ({ targetId }) => {
+    await query(`UPDATE users SET role = 'admin', updated_at = now() WHERE id = $1`, [targetId]);
+  },
+  // targetId is a job id here, matching refundPayment/transitionJob's own
+  // signature -- mirrors admin.routes.js's dispute-resolve handler's refund
+  // branch exactly, just without a dispute record attached to it.
+  refund_job: async ({ targetId, reason }, adminUserId) => {
+    await refundPayment(targetId, reason || 'Refund issued via Agency command');
+    await transitionJob(targetId, 'refunded', { byUserId: adminUserId, reason: reason || 'Refund issued via Agency command' });
+  },
+  // targetId is a dispute id. Reuses the identical resolve-then-notify flow
+  // as admin.routes.js POST /disputes/:id/resolve so a dispute resolved
+  // this way is indistinguishable from one resolved by hand.
+  resolve_dispute: async ({ targetId, resolution, notes }, adminUserId) => {
+    const { rows } = await query('SELECT * FROM disputes WHERE id = $1', [targetId]);
+    const dispute = rows[0];
+    if (!dispute) throw notFound('Dispute not found.');
+    if (dispute.status.startsWith('resolved') || dispute.status === 'closed') throw conflict('This dispute is already resolved.');
+    const finalResolution = resolution || 'resolved_other';
+
+    if (finalResolution === 'resolved_refund') {
+      await refundPayment(dispute.job_id, notes || 'Dispute resolved with refund');
+      await transitionJob(dispute.job_id, 'refunded', { byUserId: adminUserId, reason: notes });
+    } else {
+      await transitionJob(dispute.job_id, 'completed', { byUserId: adminUserId, reason: 'Dispute resolved, no refund' });
+    }
+
+    await query(
+      `UPDATE disputes SET status = $1, resolution_notes = $2, resolved_by_admin_id = $3, resolved_at = now() WHERE id = $4`,
+      [finalResolution, notes || null, adminUserId, targetId]
+    );
+    await notify(dispute.raised_by_user_id, {
+      type: 'dispute_resolved',
+      title: 'Your dispute has been resolved',
+      body: notes || `Resolution: ${finalResolution.replace('resolved_', '')}`,
+      data: { jobId: dispute.job_id },
+    });
+    if (dispute.against_user_id) {
+      await notify(dispute.against_user_id, {
+        type: 'dispute_resolved',
+        title: 'A dispute involving you was resolved',
+        body: notes || `Resolution: ${finalResolution.replace('resolved_', '')}`,
+        data: { jobId: dispute.job_id },
+      });
+    }
   },
 };
 
@@ -129,7 +195,7 @@ export async function approveAgencyItem(itemId, adminUserId) {
   const run = SAFE_ACTIONS[actionType];
   if (!run) throw badRequest(`"${actionType}" is not an approvable action type.`);
 
-  await run(targetId);
+  await run(item.proposed_action, adminUserId);
   await logAdminAction({
     adminUserId,
     actionType: `agency_approved:${actionType}`,

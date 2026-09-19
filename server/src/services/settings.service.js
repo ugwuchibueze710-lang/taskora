@@ -20,7 +20,20 @@ export async function setSetting(key, value, adminUserId = null) {
 // The Agency master switch -- checked at the top of every automatic agent
 // entry point (support auto-triage, error capture) so flipping it off stops
 // all of it instantly, with no deploy and no further Groq usage. Defaults
-// to false (see migration) if the row is somehow missing.
+// to false (see migration) if the row is somehow missing. This is what the
+// admin panel now labels "Auto-reply" -- the key name stays as-is so no
+// migration is needed for the toggle that already existed.
 export async function isAgencyEnabled() {
   return (await getSetting('agency_enabled', false)) === true;
+}
+
+// Separate switch for the continuous backlog sweep (see
+// support-agent.service.js's runAutoScanSweep): re-checks every open support
+// thread on a timer so nothing sits unanswered just because Agency was off
+// when it arrived, Groq hiccuped, or a previously-escalated question is now
+// answerable with more context. Independent from isAgencyEnabled() so an
+// admin can run one without the other, though the sweep itself is a no-op
+// unless Auto-reply is also on (there'd be nothing for it to do otherwise).
+export async function isAutoScanEnabled() {
+  return (await getSetting('agency_auto_scan_enabled', false)) === true;
 }
