@@ -13,6 +13,10 @@ import { notify } from '../services/notification.service.js';
 import { computeProviderTier, TIER_LABEL, freeDistributionEndsAt } from '../services/provider-tier.service.js';
 import { getCategoryDemandOverview } from '../services/category-demand.service.js';
 import { resolveOpenEscalationsForUser } from '../services/agency.service.js';
+import { recomputeCompleteness } from '../services/provider.service.js';
+import { uploader, uploadToStorage } from '../middleware/upload.js';
+import { businessInfoSchema } from './provider.routes.js';
+import { getLatestGrant, assertApprovedAccess } from '../services/admin-edit-grant.service.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -58,6 +62,27 @@ router.get(
     const { rows: providerRows } = await query('SELECT * FROM providers WHERE user_id = $1', [req.params.id]);
     const provider = providerRows[0] || null;
 
+    // "Click into a provider, see their page" -- their bio, photos, and
+    // chosen categories/services, exactly what a customer sees on their
+    // storefront and what the onboarding wizard collects. Fetched here (not
+    // just from GET /admin/providers/:id/) so the account detail
+    // view the admin already has open shows this without a second click.
+    let profile = null;
+    if (provider) {
+      const [categories, services, photos] = await Promise.all([
+        query(
+          `SELECT c.id, c.name, c.slug FROM provider_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.provider_id = $1`,
+          [provider.id]
+        ),
+        query(
+          `SELECT s.id, s.name, s.category_id FROM provider_services ps JOIN services s ON s.id = ps.service_id WHERE ps.provider_id = $1`,
+          [provider.id]
+        ),
+        query('SELECT * FROM provider_photos WHERE provider_id = $1 ORDER BY sort_order, created_at', [provider.id]),
+      ]);
+      profile = { categories: categories.rows, services: services.rows, photos: photos.rows };
+    }
+
     let earnings = null;
     if (provider) {
       const [summary, payouts] = await Promise.all([
@@ -93,7 +118,7 @@ router.get(
       jobsAsProvider = rows;
     }
 
-    res.json({ user, provider, earnings, jobsAsCustomer, jobsAsProvider });
+    res.json({ user, provider, profile, earnings, jobsAsCustomer, jobsAsProvider });
   })
 );
 
@@ -155,8 +180,8 @@ router.get(
       where = `WHERE lower(coalesce(business_name,'') || ' ' || coalesce(display_name,'')) LIKE $1`;
     }
     // has_active_pro mirrors the exact EXISTS subquery search.service.js uses
-    // for ranking â real, current Stripe-driven subscription state, not just
-    // the denormalized is_pro flag â so this view can never show a provider
+    // for ranking -- real, current Stripe-driven subscription state, not just
+    // the denormalized is_pro flag -- so this view can never show a provider
     // as "priority" when they wouldn't actually rank as one.
     const { rows } = await query(
       `SELECT p.*, u.email, u.first_name, u.last_name,
@@ -225,6 +250,296 @@ router.post(
   })
 );
 
+// ---- Provider full profile (view) -- "click into a provider, see their
+// page": bio, photos, categories, services, everything a customer sees on
+// their storefront plus everything the provider sees on their own
+// dashboard. Read-only; the edit-access flow below is the only way any of
+// this actually changes from here. ----
+router.get(
+  '/providers/:id/',
+  asyncHandler(async (req, res) => {
+    const { rows: providerRows } = await query('SELECT * FROM providers WHERE id = $1', [req.params.id]);
+    const provider = providerRows[0];
+    if (!provider) throw notFound('Provider not found.');
+    const [categories, services, photos] = await Promise.all([
+      query(
+        `SELECT c.id, c.name, c.slug FROM provider_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.provider_id = $1`,
+        [provider.id]
+      ),
+      query(
+        `SELECT s.id, s.name, s.category_id FROM provider_services ps JOIN services s ON s.id = ps.service_id WHERE ps.provider_id = $1`,
+        [provider.id]
+      ),
+      query('SELECT * FROM provider_photos WHERE provider_id = $1 ORDER BY sort_order, created_at', [provider.id]),
+    ]);
+    res.json({ provider, categories: categories.rows, services: services.rows, photos: photos.rows });
+  })
+);
+
+// ---- Admin "help finish setup" consent flow ----
+// Nothing below this point that actually changes a provider's profile
+// (profile/categories/services/service-area/image/photos) works unless
+// assertApprovedAccess() finds a live, unexpired, approved grant -- which
+// only the provider themselves can create, from their own dashboard (see
+// provider.routes.js's /me/edit-requests/:id/approve). Being an admin alone
+// is never enough to reach these writes.
+router.get(
+  '/providers/:id/edit-access',
+  asyncHandler(async (req, res) => {
+    const grant = await getLatestGrant(req.params.id);
+    res.json({ grant });
+  })
+);
+
+router.post(
+  '/providers/:id/edit-access/request',
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    // Idempotent: a second click while one is already pending/approved just
+    // hands back the existing grant instead of spamming another request and
+    // another notification at the provider.
+    const existing = await getLatestGrant(providerId);
+    if (existing) return res.json({ grant: existing });
+    const { rows: providerRows } = await query('SELECT user_id FROM providers WHERE id = $1', [providerId]);
+    if (!providerRows[0]) throw notFound('Provider not found.');
+    const { rows } = await query(
+      `INSERT INTO admin_edit_grants (provider_id, requested_by_admin_id, request_expires_at)
+       VALUES ($1, $2, now() + interval '1 hour') RETURNING *`,
+      [providerId, req.user.id]
+    );
+    await notify(providerRows[0].user_id, {
+      type: 'admin_setup_request',
+      title: 'Taskora wants to help finish your profile setup',
+      body: `${req.user.first_name} from Taskora is asking permission to edit your provider profile for you. Approve or decline from your dashboard -- this expires in 1 hour if you don't respond.`,
+      data: { grantId: rows[0].id },
+    });
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'request_provider_edit_access',
+      targetType: 'provider',
+      targetId: providerId,
+    });
+    res.status(201).json({ grant: rows[0] });
+  })
+);
+
+router.post(
+  '/providers/:id/edit-access/cancel',
+  asyncHandler(async (req, res) => {
+    await query(
+      `UPDATE admin_edit_grants SET status = 'revoked', updated_at = now()
+        WHERE provider_id = $1 AND status = 'pending'`,
+      [req.params.id]
+    );
+    res.json({ success: true });
+  })
+);
+
+router.post(
+  '/providers/:id/edit-access/complete',
+  asyncHandler(async (req, res) => {
+    await assertApprovedAccess(req.params.id);
+    await query(
+      `UPDATE admin_edit_grants SET status = 'completed', completed_at = now(), updated_at = now()
+        WHERE provider_id = $1 AND status = 'approved'`,
+      [req.params.id]
+    );
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'complete_provider_edit_access',
+      targetType: 'provider',
+      targetId: req.params.id,
+    });
+    res.json({ success: true });
+  })
+);
+
+// ---- Admin edit surface -- every write here requires an active approved
+// grant (checked first, inside each handler) and mirrors the provider's own
+// self-service endpoints in provider.routes.js field-for-field, so setting
+// up a provider from the admin side can never produce a different shape of
+// data than the provider doing it themselves. ----
+router.patch(
+  '/providers/:id/profile',
+  validateBody(businessInfoSchema),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    const { businessName, displayName, description, businessPhone, pricingMode, priceAmount, autoReplyEnabled, autoReplyMessage } =
+      req.body;
+    const blankToNull = (v) => (typeof v === 'string' && v.trim() === '' ? null : v);
+    const { rows } = await query(
+      `UPDATE providers SET
+         business_name = COALESCE($1, business_name),
+         display_name = COALESCE($2, display_name),
+         description = COALESCE($3, description),
+         business_phone = COALESCE($4, business_phone),
+         pricing_mode = COALESCE($5, pricing_mode),
+         price_amount = CASE WHEN $5 = 'hidden' THEN NULL ELSE COALESCE($6, price_amount) END,
+         auto_reply_enabled = COALESCE($7, auto_reply_enabled),
+         auto_reply_message = COALESCE($8, auto_reply_message),
+         updated_at = now()
+       WHERE id = $9 RETURNING *`,
+      [
+        blankToNull(businessName),
+        blankToNull(displayName),
+        blankToNull(description),
+        blankToNull(businessPhone),
+        pricingMode,
+        priceAmount,
+        autoReplyEnabled,
+        blankToNull(autoReplyMessage),
+        providerId,
+      ]
+    );
+    if (!rows[0]) throw notFound('Provider not found.');
+    await recomputeCompleteness(providerId);
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'edit_provider_profile',
+      targetType: 'provider',
+      targetId: providerId,
+      details: req.body,
+    });
+    res.json({ provider: rows[0] });
+  })
+);
+
+router.put(
+  '/providers/:id/categories',
+  validateBody(z.object({ categoryIds: z.array(z.number().int()).min(1, 'Choose at least one category.') })),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    await withTransaction(async (client) => {
+      await client.query('DELETE FROM provider_categories WHERE provider_id = $1', [providerId]);
+      for (const categoryId of req.body.categoryIds) {
+        await client.query(
+          'INSERT INTO provider_categories (provider_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [providerId, categoryId]
+        );
+      }
+    });
+    await recomputeCompleteness(providerId);
+    res.json({ success: true });
+  })
+);
+
+router.put(
+  '/providers/:id/services',
+  validateBody(z.object({ serviceIds: z.array(z.number().int()).default([]) })),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    await withTransaction(async (client) => {
+      await client.query('DELETE FROM provider_services WHERE provider_id = $1', [providerId]);
+      for (const serviceId of req.body.serviceIds) {
+        await client.query('INSERT INTO provider_services (provider_id, service_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+          providerId,
+          serviceId,
+        ]);
+      }
+    });
+    await recomputeCompleteness(providerId);
+    res.json({ success: true });
+  })
+);
+
+router.put(
+  '/providers/:id/service-area',
+  validateBody(
+    z.object({
+      radiusMiles: z.number().int().positive().max(500),
+      label: z.string().max(200).optional(),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    const { radiusMiles, label, lat, lng } = req.body;
+    const isCustom = ![5, 10, 25].includes(radiusMiles);
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO provider_service_areas (provider_id, radius_miles, is_custom, updated_at)
+         VALUES ($1, $2, $3, now())
+         ON CONFLICT (provider_id) DO UPDATE SET radius_miles = $2, is_custom = $3, updated_at = now()`,
+        [providerId, radiusMiles, isCustom]
+      );
+      await client.query(
+        `UPDATE providers SET service_radius_miles = $1,
+           base_location_label = COALESCE($2, base_location_label),
+           base_lat = COALESCE($3, base_lat),
+           base_lng = COALESCE($4, base_lng),
+           updated_at = now()
+         WHERE id = $5`,
+        [radiusMiles, label, lat, lng, providerId]
+      );
+    });
+    await recomputeCompleteness(providerId);
+    res.json({ success: true });
+  })
+);
+
+const adminProviderImageUpload = uploader('providers', { maxSizeMb: 6 });
+const adminPortfolioUpload = uploader('portfolio', { maxSizeMb: 8 });
+
+router.post(
+  '/providers/:id/image',
+  adminProviderImageUpload.single('image'),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    if (!req.file) throw badRequest('Provide an image file.');
+    const imageUrl = await uploadToStorage('providers', req.file);
+    await query('UPDATE providers SET image_url = $1, image_source = $2, updated_at = now() WHERE id = $3', [
+      imageUrl,
+      'custom',
+      providerId,
+    ]);
+    await recomputeCompleteness(providerId);
+    res.json({ imageUrl });
+  })
+);
+
+router.post(
+  '/providers/:id/photos',
+  adminPortfolioUpload.array('photos', 10),
+  asyncHandler(async (req, res) => {
+    const providerId = req.params.id;
+    await assertApprovedAccess(providerId);
+    if (!req.files?.length) throw badRequest('No photos uploaded.');
+    const inserted = [];
+    for (const file of req.files) {
+      const url = await uploadToStorage('portfolio', file);
+      const { rows } = await query(
+        `INSERT INTO provider_photos (provider_id, url, sort_order)
+         VALUES ($1, $2, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM provider_photos WHERE provider_id = $1))
+         RETURNING *`,
+        [providerId, url]
+      );
+      inserted.push(rows[0]);
+    }
+    await recomputeCompleteness(providerId);
+    res.status(201).json({ photos: inserted });
+  })
+);
+
+router.delete(
+  '/providers/:id/photos/:photoId',
+  asyncHandler(async (req, res) => {
+    await assertApprovedAccess(req.params.id);
+    const { rowCount } = await query('DELETE FROM provider_photos WHERE id = $1 AND provider_id = $2', [
+      req.params.photoId,
+      req.params.id,
+    ]);
+    if (!rowCount) throw notFound('Photo not found.');
+    await recomputeCompleteness(req.params.id);
+    res.json({ success: true });
+  })
+);
+
 // ---- Categories ----
 router.get(
   '/categories',
@@ -242,7 +557,7 @@ router.post(
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const { rows } = await query(
       `INSERT INTO categories (slug, name, icon, sort_order) VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *`,
-      [slug, name, icon || 'ð ï¸', sortOrder]
+      [slug, name, icon || '🛠️', sortOrder]
     );
     res.status(201).json({ category: rows[0] });
   })
@@ -397,7 +712,7 @@ router.post(
     // Do the money-moving / job-state side effect FIRST, and only mark the dispute
     // "resolved" if it actually succeeds. If refundPayment throws (Stripe error,
     // network issue), the dispute must stay open rather than being permanently
-    // marked resolved_refund for a refund that never happened â see the identical
+    // marked resolved_refund for a refund that never happened -- see the identical
     // fix applied to job.routes.js's /cancel and /decline handlers.
     if (resolution === 'resolved_refund') {
       await refundPayment(dispute.job_id, 'Dispute resolved with refund');
@@ -472,7 +787,7 @@ router.get(
 );
 
 // ---- Category demand (per-city featured-category system) ----
-// Read-only view over category-demand.service.js's real search-event data â
+// Read-only view over category-demand.service.js's real search-event data --
 // the same rolling window and source of truth the home page's featured
 // section uses, never a separate/duplicated computation.
 router.get(
