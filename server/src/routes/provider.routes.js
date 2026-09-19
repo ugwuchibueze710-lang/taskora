@@ -7,6 +7,8 @@ import { requireAuth, requireProvider, attachUserIfPresent } from '../middleware
 import { uploader, uploadToStorage } from '../middleware/upload.js';
 import { ensureProviderRecord, recomputeCompleteness } from '../services/provider.service.js';
 import { distanceMiles } from '../services/mapbox.service.js';
+import { getLatestGrant } from '../services/admin-edit-grant.service.js';
+import { notify } from '../services/notification.service.js';
 
 const router = Router();
 const providerImageUpload = uploader('providers', { maxSizeMb: 6 });
@@ -59,7 +61,11 @@ router.get(
   })
 );
 
-const businessInfoSchema = z.object({
+// Exported so admin.routes.js's "edit this provider's setup on their behalf"
+// endpoint validates against the exact same shape as this self-service one --
+// one definition of what a valid business-info update looks like, not two
+// that could quietly drift apart.
+export const businessInfoSchema = z.object({
   businessName: z.string().max(160).nullable().optional(),
   displayName: z.string().max(160).nullable().optional(),
   description: z.string().max(3000).nullable().optional(),
@@ -191,8 +197,7 @@ router.post(
       imageUrl = await uploadToStorage('providers', req.file);
       source = req.body.source === 'logo' ? 'logo' : 'custom';
     } else if (req.body.useProfilePicture === 'true' || req.body.useProfilePicture === true) {
-      const { rows } = await query('SELECT avatar_url FROM profiles WHERE user_id = $1', [req.user.id]);
-      if (!rows[0]?.avatar_url) throw badRequest('You do not have a profile picture to use.');
+      const { rows } = await query('SELECT avatar_url FROM profiles WHERE user_id = $1', [req.user.id]);      if (!rows[0]?.avatar_url) throw badRequest('You do not have a profile picture to use.');
       imageUrl = rows[0].avatar_url;
       source = 'profile';
     } else {
@@ -391,8 +396,7 @@ router.get(
 
 // ---- Earnings summary ----
 router.get(
-  '/me/earnings',
-  requireAuth,
+  '/me/earnings',  requireAuth,
   requireProvider,
   asyncHandler(async (req, res) => {
     const providerId = req.user.provider_id;
@@ -409,6 +413,83 @@ router.get(
       query('SELECT * FROM provider_payouts WHERE provider_id = $1 ORDER BY created_at DESC LIMIT 50', [providerId]),
     ]);
     res.json({ summary: summary.rows[0], payouts: payouts.rows });
+  })
+);
+
+// ---- Admin "help finish setup" consent flow (provider's side) ----
+// The admin-side request/edit endpoints live in admin.routes.js; these are
+// the only three ways a provider can respond, and they're the only writes
+// admin.routes.js's assertApprovedAccess() will ever accept as having
+// happened -- there's no way for an admin to grant themselves access.
+router.get(
+  '/me/edit-requests',
+  requireAuth,
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const grant = await getLatestGrant(req.user.provider_id);
+    res.json({ grant });
+  })
+);
+
+router.post(
+  '/me/edit-requests/:grantId/approve',
+  requireAuth,
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `UPDATE admin_edit_grants SET status = 'approved', responded_at = now(),
+         access_expires_at = now() + interval '2 hours', updated_at = now()
+       WHERE id = $1 AND provider_id = $2 AND status = 'pending' RETURNING *`,
+      [req.params.grantId, req.user.provider_id]
+    );
+    const grant = rows[0];
+    if (!grant) throw notFound('This request is no longer waiting on you -- it may have already expired.');
+    await notify(grant.requested_by_admin_id, {
+      type: 'admin_setup_approved',
+      title: 'Setup-access approved',
+      body: 'The provider approved your request -- you can edit their profile for the next 2 hours.',
+      data: { providerId: req.user.provider_id },
+    });
+    res.json({ grant });
+  })
+);
+
+router.post(
+  '/me/edit-requests/:grantId/decline',
+  requireAuth,
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `UPDATE admin_edit_grants SET status = 'declined', responded_at = now(), updated_at = now()
+       WHERE id = $1 AND provider_id = $2 AND status = 'pending' RETURNING *`,
+      [req.params.grantId, req.user.provider_id]
+    );
+    const grant = rows[0];
+    if (!grant) throw notFound('This request is no longer waiting on you -- it may have already expired.');
+    await notify(grant.requested_by_admin_id, {
+      type: 'admin_setup_declined',
+      title: 'Setup-access declined',
+      body: 'The provider declined your request to edit their profile.',
+      data: {},
+    });
+    res.json({ grant });
+  })
+);
+
+// A provider isn't stuck once they've approved -- they can pull the plug on
+// an in-progress admin editing session at any time, not just at the start.
+router.post(
+  '/me/edit-requests/:grantId/revoke',
+  requireAuth,
+  requireProvider,
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `UPDATE admin_edit_grants SET status = 'revoked', updated_at = now()
+       WHERE id = $1 AND provider_id = $2 AND status = 'approved' RETURNING *`,
+      [req.params.grantId, req.user.provider_id]
+    );
+    if (!rows[0]) throw notFound('No active access to revoke.');
+    res.json({ grant: rows[0] });
   })
 );
 
