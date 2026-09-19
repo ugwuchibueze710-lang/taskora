@@ -49,6 +49,15 @@ app.use('/api/payments/webhook', webhookRouter);
 // server, which is why it doesn't show up in server logs). Explicitly allow
 // connect-src to reach the configured Supabase project on top of Helmet's
 // other defaults.
+//
+// Every uploaded image (avatars, provider logos, portfolio photos) now lives
+// on that same Supabase project too, as a Supabase Storage public URL, not on
+// this server's own origin -- so img-src needs the identical allowance, or
+// the browser silently drops every one of those images (no console error a
+// user would notice, no broken-image icon on pages using SafeImage -- it
+// just quietly falls back to a placeholder). This was missed when
+// connect-src was patched for the auth calls above; same root cause, same
+// fix, just for the img-src directive instead.
 const supabaseConnectSrc = process.env.SUPABASE_URL ? [new URL(process.env.SUPABASE_URL).origin] : [];
 app.use(
   helmet({
@@ -57,6 +66,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         'connect-src': ["'self'", ...supabaseConnectSrc],
+        'img-src': ["'self'", 'data:', ...supabaseConnectSrc],
       },
     },
   })
