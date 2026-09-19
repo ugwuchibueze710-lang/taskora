@@ -10,6 +10,7 @@ import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
 import { attachCallSignaling } from './realtime/call-signaling.js';
 import { captureServerError } from './services/error-monitor.service.js';
+import { runAutoScanSweep } from './services/support-agent.service.js';
 
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -215,4 +216,16 @@ syncCategoryCatalog()
     // a Supabase access token passed as a query param (browsers can't set
     // custom headers on a WS handshake) -- see realtime/call-signaling.js.
     attachCallSignaling(server);
+
+    // The Agency "Auto-scan" sweep -- re-checks every support thread that's
+    // still waiting on a reply so nothing sits unanswered just because
+    // Auto-reply was off when it arrived, Groq hiccuped, or more context is
+    // now available. A no-op read (one query) whenever the Auto-scan toggle
+    // itself is off (see settings.service.js / support-agent.service.js), so
+    // this timer running is harmless even when nobody has ever turned it on.
+    // Wrapped in try/catch since a timer callback throwing would otherwise
+    // crash the whole process.
+    setInterval(() => {
+      runAutoScanSweep().catch((err) => console.error('agency auto-scan sweep failed:', err.message));
+    }, 3 * 60 * 1000);
   });
