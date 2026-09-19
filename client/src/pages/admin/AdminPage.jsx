@@ -419,56 +419,50 @@ function useCountdown(targetIso) {
 // portfolio photos, categories, and services, read straight from the
 // `profile` object GET /admin/users/:id already returns. Read-only: this is
 // just the view. Editing any of it is gated behind AdminEditAccessPanel below.
+// Always rendered in full the moment the account row expands -- no second
+// click to reveal it, since seeing everything is the point of opening it.
 function ProviderFullProfile({ provider, profile }) {
-  const [open, setOpen] = useState(false);
   const isEmpty = !provider.description && profile.categories.length === 0 && profile.photos.length === 0;
   return (
-    <div className="rounded-xl border border-ink-900/8 bg-white p-3">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
-        <span className="text-xs font-medium text-ink-700/70">View full profile (what customers see on their page)</span>
-        <span className="text-xs text-ink-700/40">{open ? 'Hide' : 'Show'}</span>
-      </button>
-      {open && (
-        <div className="mt-3 space-y-3">
-          <div className="flex items-center gap-3">
-            {provider.image_url ? (
-              <img src={provider.image_url} alt="" className="h-16 w-16 rounded-full object-cover" />
-            ) : (
-              <div className="h-16 w-16 rounded-full bg-ink-900/10 flex items-center justify-center text-xl">🧰</div>
-            )}
-            <div>
-              <p className="font-medium">{provider.business_name || provider.display_name}</p>
-              {provider.business_phone && <p className="text-xs text-ink-700/60">{provider.business_phone}</p>}
-              {provider.base_location_label && (
-                <p className="text-xs text-ink-700/60">📍 {provider.base_location_label} · {provider.service_radius_miles || '—'} mi radius</p>
-              )}
-            </div>
-          </div>
-          {provider.description && <p className="text-xs text-ink-700/70 whitespace-pre-wrap">{provider.description}</p>}
-          {profile.categories.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {profile.categories.map((c) => (
-                <span key={c.id} className="rounded-full bg-ink-900/5 px-2.5 py-1 text-xs">{c.name}</span>
-              ))}
-            </div>
+    <div className="rounded-xl border border-ink-900/8 bg-white p-3 space-y-3">
+      <p className="text-xs font-medium text-ink-700/70">Full profile (what customers see on their page)</p>
+      <div className="flex items-center gap-3">
+        {provider.image_url ? (
+          <img src={provider.image_url} alt="" className="h-16 w-16 rounded-full object-cover" />
+        ) : (
+          <div className="h-16 w-16 rounded-full bg-ink-900/10 flex items-center justify-center text-xl">🧰</div>
+        )}
+        <div>
+          <p className="font-medium">{provider.business_name || provider.display_name}</p>
+          {provider.business_phone && <p className="text-xs text-ink-700/60">{provider.business_phone}</p>}
+          {provider.base_location_label && (
+            <p className="text-xs text-ink-700/60">📍 {provider.base_location_label} · {provider.service_radius_miles || '—'} mi radius</p>
           )}
-          {profile.services.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {profile.services.map((s) => (
-                <span key={s.id} className="rounded-full border border-ink-900/10 px-2.5 py-1 text-xs text-ink-700/70">{s.name}</span>
-              ))}
-            </div>
-          )}
-          {profile.photos.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
-              {profile.photos.map((p) => (
-                <img key={p.id} src={p.url} alt="" className="aspect-square rounded-lg object-cover" />
-              ))}
-            </div>
-          )}
-          {isEmpty && <p className="text-xs text-ink-700/50">Nothing filled in yet -- this is exactly why the edit-access flow below exists.</p>}
+        </div>
+      </div>
+      {provider.description && <p className="text-xs text-ink-700/70 whitespace-pre-wrap">{provider.description}</p>}
+      {profile.categories.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {profile.categories.map((c) => (
+            <span key={c.id} className="rounded-full bg-ink-900/5 px-2.5 py-1 text-xs">{c.name}</span>
+          ))}
         </div>
       )}
+      {profile.services.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {profile.services.map((s) => (
+            <span key={s.id} className="rounded-full border border-ink-900/10 px-2.5 py-1 text-xs text-ink-700/70">{s.name}</span>
+          ))}
+        </div>
+      )}
+      {profile.photos.length > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {profile.photos.map((p) => (
+            <img key={p.id} src={p.url} alt="" className="aspect-square rounded-lg object-cover" />
+          ))}
+        </div>
+      )}
+      {isEmpty && <p className="text-xs text-ink-700/50">Nothing filled in yet -- this is exactly why the edit-access flow below exists.</p>}
     </div>
   );
 }
