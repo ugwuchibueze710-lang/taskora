@@ -59,6 +59,17 @@ export function notificationRoute(notification, currentMode) {
     case 'support_reply':
       return '/support';
 
+    // An admin is asking to finish this provider's setup on their behalf --
+    // the approve/decline banner lives on the provider's own dashboard.
+    case 'admin_setup_request':
+      return '/provider';
+
+    // Sent to the requesting admin once the provider answers -- back to the
+    // admin panel, where their standby timer/edit form is waiting.
+    case 'admin_setup_approved':
+    case 'admin_setup_declined':
+      return '/admin';
+
     default:
       return null;
   }
