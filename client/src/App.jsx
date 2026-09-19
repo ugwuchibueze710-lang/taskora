@@ -37,6 +37,7 @@ import ProviderBoostPage from './pages/provider/ProviderBoostPage.jsx';
 import ProviderSettingsPage from './pages/provider/ProviderSettingsPage.jsx';
 
 import AdminPage from './pages/admin/AdminPage.jsx';
+import AdminUserDetailPage from './pages/admin/AdminUserDetailPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/provider/settings" element={<ProviderSettingsPage />} />
 
         <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+        <Route path="/admin/users/:userId" element={<RequireAdmin><AdminUserDetailPage /></RequireAdmin>} />
       </Route>
 
       {/* Catch-all: without this, an unmatched URL (mistyped, stale bookmark,
