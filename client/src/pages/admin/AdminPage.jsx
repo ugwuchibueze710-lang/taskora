@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../api/client.js';
 
 const TABS = ['Analytics', 'Agency', 'Users', 'Providers', 'Categories', 'Category Demand', 'Jobs', 'Payments', 'Disputes', 'Support', 'Reviews', 'Pro & Boost'];
@@ -61,15 +62,6 @@ function Card({ children }) {
 
 function money(n) {
   return `$${Number(n).toFixed(2)}`;
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-lg bg-ink-900/[0.03] p-2">
-      <p className="font-display text-base">{value}</p>
-      <p className="text-[11px] text-ink-700/50">{label}</p>
-    </div>
-  );
 }
 
 function AnalyticsTab() {
@@ -182,23 +174,43 @@ function AgencyTab({ onOpenSupport }) {
   const [expandedId, setExpandedId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [enabled, setEnabled] = useState(null);
-  const [toggling, setToggling] = useState(false);
+  const [autoScanEnabled, setAutoScanEnabled] = useState(null);
+  const [togglingReply, setTogglingReply] = useState(false);
+  const [togglingScan, setTogglingScan] = useState(false);
 
   const load = () => api.get('/admin/agency/items').then(({ data }) => setItems(data.items));
   useEffect(() => {
     load();
-    api.get('/admin/agency/settings').then(({ data }) => setEnabled(data.enabled));
+    api.get('/admin/agency/settings').then(({ data }) => {
+      setEnabled(data.enabled);
+      setAutoScanEnabled(data.autoScanEnabled);
+    });
     const interval = setInterval(load, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  const toggle = async () => {
-    setToggling(true);
+  // Two independent switches. Auto-reply answers support messages as they
+  // arrive; Auto-scan is the continuous sweep that keeps re-checking for
+  // anything still unanswered (a Groq hiccup, Auto-reply was briefly off,
+  // etc.) so nothing sits waiting forever. Either can run without the other,
+  // though Auto-scan has nothing to do if Auto-reply has never sent a reply.
+  const toggleReply = async () => {
+    setTogglingReply(true);
     try {
       const { data } = await api.post('/admin/agency/settings', { enabled: !enabled });
       setEnabled(data.enabled);
     } finally {
-      setToggling(false);
+      setTogglingReply(false);
+    }
+  };
+
+  const toggleScan = async () => {
+    setTogglingScan(true);
+    try {
+      const { data } = await api.post('/admin/agency/settings', { autoScanEnabled: !autoScanEnabled });
+      setAutoScanEnabled(data.autoScanEnabled);
+    } finally {
+      setTogglingScan(false);
     }
   };
 
@@ -245,22 +257,35 @@ function AgencyTab({ onOpenSupport }) {
       <Card>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-medium text-sm">Agency system {enabled === null ? '' : enabled ? 'is running' : 'is paused'}</p>
+            <p className="font-medium text-sm">Auto-reply {enabled === null ? '' : enabled ? 'is on' : 'is off'}</p>
             <p className="text-xs text-ink-700/50 mt-0.5">
               {enabled
-                ? 'Watching support messages and server errors right now — this uses your Groq quota.'
-                : 'Turned off — no AI calls are being made. Support messages and errors just wait for you, like before.'}
+                ? 'Answering support messages as they arrive, using each customer\'s real account context — this uses your Groq quota.'
+                : 'Turned off — no AI replies are sent. Support messages just wait for you, like before.'}
             </p>
           </div>
-          <AgencyToggle checked={!!enabled} disabled={enabled === null || toggling} onChange={toggle} />
+          <AgencyToggle checked={!!enabled} disabled={enabled === null || togglingReply} onChange={toggleReply} />
+        </div>
+        <div className="mt-3 pt-3 border-t border-ink-900/8 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-sm">Auto-scan {autoScanEnabled === null ? '' : autoScanEnabled ? 'is on' : 'is off'}</p>
+            <p className="text-xs text-ink-700/50 mt-0.5">
+              {autoScanEnabled
+                ? 'Continuously re-checking for any support message still waiting on a reply, so nothing gets left behind.'
+                : 'Turned off — messages only get triaged once, when they first arrive.'}
+            </p>
+          </div>
+          <AgencyToggle checked={!!autoScanEnabled} disabled={autoScanEnabled === null || togglingScan} onChange={toggleScan} />
         </div>
       </Card>
 
+      <AdminCommandPanel />
+
       <p className="text-xs text-ink-700/50">
         Everything the support and error-monitoring agents noticed, handled on their own, or need you for. Support auto-replies
-        only ever answer stock questions; anything about a specific account, job, or payment always lands here for a human.
-        Code-level fixes are always drafted for you, never applied automatically — this app's server has no ability to push
-        code changes to itself.
+        only ever answer stock questions or facts about the customer's own account; anything that needs a decision always
+        lands here for a human. Code-level fixes are always drafted for you, never applied automatically — this app's server
+        has no ability to push code changes to itself.
       </p>
 
       <AgencySection title="Needs your approval" emptyText="Nothing waiting on a one-click approval right now.">
@@ -297,8 +322,7 @@ function AgencyTab({ onOpenSupport }) {
                 <button onClick={() => onOpenSupport(item.related_user_id)}
                   className="rounded-full bg-ink-900 px-3 py-1 text-xs font-semibold text-white hover:bg-ink-800">Reply in Support</button>
                 <button disabled={busyId === item.id} onClick={() => act(item.id, 'dismiss')} className="text-[11px] text-ink-700/40 hover:underline">Dismiss</button>
-              </div>
-            </div>
+              </div>            </div>
           </Card>
         ))}
       </AgencySection>
@@ -357,6 +381,102 @@ function AgencyTab({ onOpenSupport }) {
   );
 }
 
+// The command box -- type an instruction, Agency looks things up and/or
+// acts on them for real (see server/src/services/agent-command.service.js).
+// Collapsed by default since most visits to this tab are just checking the
+// approval queue; expands into a small chat log once the admin starts
+// typing. Risky actions (suspend/delete/promote/refund/resolve-dispute/
+// hide-review) never run from here directly -- they show up in "Needs your
+// approval" above, and this panel just reports that a request was queued.
+function AdminCommandPanel() {
+  const [open, setOpen] = useState(false);
+  const [log, setLog] = useState([]); // [{role: 'user'|'assistant', content}]
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [log, open]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput('');
+    setSending(true);
+    const nextLog = [...log, { role: 'user', content: text }];
+    setLog(nextLog);
+    try {
+      const { data } = await api.post('/admin/agency/command', {
+        text,
+        history: log.slice(-12),
+      });
+      setLog([...nextLog, { role: 'assistant', content: data.reply }]);
+    } catch (err) {
+      setLog([...nextLog, { role: 'assistant', content: `Something went wrong: ${err.message}` }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between gap-3 text-left">
+        <div>
+          <p className="font-medium text-sm">Command Agency</p>
+          <p className="text-xs text-ink-700/50 mt-0.5">
+            Tell it what to do — look something up, reply to a customer, suspend an account, issue a refund — in plain English.
+          </p>
+        </div>
+        <span className={`text-ink-700/40 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="max-h-80 overflow-y-auto space-y-2 rounded-xl bg-ink-900/[0.03] p-3">
+            {log.length === 0 && (
+              <p className="text-xs text-ink-700/40 italic">
+                Try: "how many open disputes are there", "reply to the last message from Maria saying we're looking into it",
+                or "suspend the user test@example.com for spamming other users".
+              </p>
+            )}
+            {log.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                    m.role === 'user' ? 'bg-ink-900 text-white' : 'bg-white border border-ink-900/8 text-ink-900'
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {sending && <p className="text-xs text-ink-700/40 italic">Thinking…</p>}
+            <div ref={bottomRef} />
+          </div>
+          <form onSubmit={send} className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type a command…"
+              disabled={sending}
+              className="flex-1 rounded-full border border-ink-900/15 px-4 py-2 text-sm disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-50"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // A real switch, not a checkbox with CSS on top: track slides between two
 // colors, knob glides across with a spring-ish ease, and a small dot pulses
 // while running so "it's actively on" reads at a glance, not just on click.
@@ -392,108 +512,8 @@ function AgencySection({ title, emptyText, children }) {
   );
 }
 
-// Expandable detail for one account -- profile, provider earnings (if
-// they're a provider, using the exact same numbers /providers/me/earnings
-// shows the provider themselves), job history on both sides, and an inline
-// two-way support conversation (same support_messages thread every admin
-// shares -- see admin.routes.js's /support/threads/:userId, reused here
-// rather than duplicated).
-function UserDetail({ userId }) {
-  const [detail, setDetail] = useState(null);
-  const [support, setSupport] = useState(null);
-  const [reply, setReply] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const loadSupport = () => api.get(`/admin/support/threads/${userId}`).then(({ data }) => setSupport(data));
-  useEffect(() => {
-    api.get(`/admin/users/${userId}`).then(({ data }) => setDetail(data));
-    loadSupport();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  const sendReply = async (e) => {
-    e.preventDefault();
-    if (!reply.trim()) return;
-    setSending(true);
-    try {
-      await api.post(`/admin/support/threads/${userId}/reply`, { body: reply });
-      setReply('');
-      await loadSupport();
-    } finally {
-      setSending(false);
-    }
-  };
-
-  if (!detail) return <p className="text-xs text-ink-700/50 mt-3">Loading…</p>;
-  const { user, provider, earnings, jobsAsCustomer, jobsAsProvider } = detail;
-
-  return (
-    <div className="mt-3 pt-3 border-t border-ink-900/8 space-y-3 text-sm">
-      <p className="text-xs text-ink-700/60">
-        Joined {new Date(user.created_at).toLocaleDateString()}{user.location_label && ` · ${user.location_label}`}
-      </p>
-
-      {provider && (
-        <div>
-          <p className="font-medium">
-            {provider.business_name || provider.display_name} <span className="text-xs text-ink-700/50">(provider · {provider.status})</span>
-          </p>
-          {earnings && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-              <MiniStat label="Pending payout" value={money(earnings.summary.pending)} />
-              <MiniStat label="Released to provider" value={money(earnings.summary.released)} />
-              <MiniStat label="Gross charged (Stripe)" value={money(earnings.summary.gross)} />
-              <MiniStat label="Taskora fees kept" value={money(earnings.summary.fees_paid)} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {jobsAsCustomer.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-ink-700/70 mb-1">Jobs as customer ({jobsAsCustomer.length})</p>
-          <div className="space-y-1">
-            {jobsAsCustomer.slice(0, 5).map((j) => (
-              <p key={j.id} className="text-xs text-ink-700/60">→ {j.provider_name} · {money(j.price)} · {j.status}</p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {jobsAsProvider.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-ink-700/70 mb-1">Jobs as provider ({jobsAsProvider.length})</p>
-          <div className="space-y-1">
-            {jobsAsProvider.slice(0, 5).map((j) => (
-              <p key={j.id} className="text-xs text-ink-700/60">{j.customer_email} · {money(j.price)} · {j.status}</p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <p className="text-xs font-medium text-ink-700/70 mb-1">Support conversation</p>
-        <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg bg-ink-900/[0.02] p-2">
-          {(!support || support.messages.length === 0) && <p className="text-xs text-ink-700/50">No support messages yet.</p>}
-          {support?.messages.map((m) => (
-            <div key={m.id} className={`rounded-lg p-2 text-xs max-w-[85%] ${m.sender === 'admin' ? 'ml-auto bg-ink-900 text-white' : 'bg-white border border-ink-900/8'}`}>
-              {m.body}
-            </div>
-          ))}
-        </div>
-        <form onSubmit={sendReply} className="flex gap-2 mt-2">
-          <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Message this user…" className="flex-1 rounded-lg border border-ink-900/15 px-3 py-1.5 text-xs" />
-          <button disabled={sending} className="rounded-lg bg-ember-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ember-600 disabled:opacity-60">Send</button>
-        </form>
-        <p className="text-[11px] text-ink-700/40 mt-1">This lands directly in their Support inbox, and any admin here sees the same thread.</p>
-      </div>
-    </div>
-  );
-}
-
 function UsersTab() {
   const [users, setUsers] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
   const load = () => api.get('/admin/users').then(({ data }) => setUsers(data.users));
   useEffect(() => { load(); }, []);
   const act = async (id, action) => { await api.post(`/admin/users/${id}/${action}`); load(); };
@@ -512,10 +532,13 @@ function UsersTab() {
       {users.map((u) => (
         <Card key={u.id}>
           <div className="flex items-center justify-between gap-2">
-            <button onClick={() => setExpandedId(expandedId === u.id ? null : u.id)} className="text-left flex-1 min-w-0">
+            {/* Click into a full dedicated page for this account -- everything
+                about them (profile, job history, earnings, edit-access
+                control) lives there, not in an inline accordion here. */}
+            <Link to={`/admin/users/${u.id}`} className="text-left flex-1 min-w-0 hover:opacity-70">
               <p className="font-medium">{u.first_name} {u.last_name} <span className="text-xs text-ink-700/50">({u.email})</span></p>
               <p className="text-xs text-ink-700/60">{u.role} · {u.status} · mode: {u.current_mode}</p>
-            </button>
+            </Link>
             <div className="flex gap-2 flex-wrap justify-end">
               {u.status === 'active' ? (
                 <button onClick={() => act(u.id, 'suspend')} className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50">Suspend</button>
@@ -530,7 +553,6 @@ function UsersTab() {
               )}
             </div>
           </div>
-          {expandedId === u.id && <UserDetail userId={u.id} />}
         </Card>
       ))}
     </div>
@@ -545,37 +567,49 @@ const TIER_BADGE = {
 
 function ProvidersTab() {
   const [providers, setProviders] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
-  const [earningsById, setEarningsById] = useState({});
   const load = () => api.get('/admin/providers').then(({ data }) => setProviders(data.providers));
   useEffect(() => { load(); }, []);
   const act = async (id, action) => { await api.post(`/admin/providers/${id}/${action}`); load(); };
-  const toggle = async (p) => {
-    const next = expandedId === p.id ? null : p.id;
-    setExpandedId(next);
-    if (next && !earningsById[p.id]) {
-      const { data } = await api.get(`/admin/providers/${p.id}/earnings`);
-      setEarningsById((prev) => ({ ...prev, [p.id]: data }));
-    }
-  };
   return (
     <div className="space-y-2">
       {providers.map((p) => {
         const badge = TIER_BADGE[p.tier] || TIER_BADGE.non_priority;
-        const earnings = earningsById[p.id];
+        // base_lat/base_lng/base_location_label and profile_completeness come
+        // straight through from `SELECT p.*` in GET /admin/providers -- the
+        // exact same columns the provider's own dashboard reads, so this can
+        // never drift from what the provider themselves sees or from what
+        // search.service.js actually uses to place them.
+        const hasLocation = p.base_lat != null && p.base_lng != null;
+        const mapUrl = hasLocation ? `https://www.google.com/maps?q=${p.base_lat},${p.base_lng}` : null;
         return (
           <Card key={p.id}>
             <div className="flex items-center justify-between gap-2">
-              <button onClick={() => toggle(p)} className="text-left flex-1 min-w-0">
+              {/* Same dedicated full-page detail view as the Users tab --
+                  p.user_id links both entry points to the one canonical page. */}
+              <Link to={`/admin/users/${p.user_id}`} className="text-left flex-1 min-w-0 hover:opacity-70">
                 <p className="font-medium">{p.business_name || p.display_name} {p.verified && '✓'}</p>
                 <p className="text-xs text-ink-700/60">{p.email} · {p.status} · rating {p.rating_avg}</p>
-                <div className="mt-1 flex items-center gap-2">
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span>
                   {p.tier === 'free_distribution' && p.freeDistributionEndsAt && (
                     <span className="text-[11px] text-ink-700/50">until {new Date(p.freeDistributionEndsAt).toLocaleDateString()}</span>
                   )}
+                  <span className="text-[11px] text-ink-700/50">setup {p.profile_completeness}%</span>
+                  {hasLocation ? (
+                    <a
+                      href={mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[11px] text-sky-700 hover:underline"
+                    >
+                      📍 {p.base_location_label || 'View on map'}
+                    </a>
+                  ) : (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">No location set</span>
+                  )}
                 </div>
-              </button>
+              </Link>
               <div className="flex gap-2 flex-wrap justify-end">
                 {!p.verified && <button onClick={() => act(p.id, 'verify')} className="rounded-full border border-ink-900/15 px-3 py-1 text-xs hover:bg-ink-900/5">Verify</button>}
                 {p.status !== 'suspended' ? (
@@ -585,20 +619,6 @@ function ProvidersTab() {
                 )}
               </div>
             </div>
-            {expandedId === p.id && (
-              <div className="mt-3 pt-3 border-t border-ink-900/8">
-                {!earnings ? (
-                  <p className="text-xs text-ink-700/50">Loading earnings…</p>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <MiniStat label="Pending payout" value={money(earnings.summary.pending)} />
-                    <MiniStat label="Released to provider" value={money(earnings.summary.released)} />
-                    <MiniStat label="Gross charged (Stripe)" value={money(earnings.summary.gross)} />
-                    <MiniStat label="Taskora fees kept" value={money(earnings.summary.fees_paid)} />
-                  </div>
-                )}
-              </div>
-            )}
           </Card>
         );
       })}

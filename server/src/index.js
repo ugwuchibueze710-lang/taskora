@@ -10,6 +10,7 @@ import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
 import { attachCallSignaling } from './realtime/call-signaling.js';
 import { captureServerError } from './services/error-monitor.service.js';
+import { runAutoScanSweep } from './services/support-agent.service.js';
 
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -49,6 +50,15 @@ app.use('/api/payments/webhook', webhookRouter);
 // server, which is why it doesn't show up in server logs). Explicitly allow
 // connect-src to reach the configured Supabase project on top of Helmet's
 // other defaults.
+//
+// Every uploaded image (avatars, provider logos, portfolio photos) now lives
+// on that same Supabase project too, as a Supabase Storage public URL, not on
+// this server's own origin -- so img-src needs the identical allowance, or
+// the browser silently drops every one of those images (no console error a
+// user would notice, no broken-image icon on pages using SafeImage -- it
+// just quietly falls back to a placeholder). This was missed when
+// connect-src was patched for the auth calls above; same root cause, same
+// fix, just for the img-src directive instead.
 const supabaseConnectSrc = process.env.SUPABASE_URL ? [new URL(process.env.SUPABASE_URL).origin] : [];
 app.use(
   helmet({
@@ -57,6 +67,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         'connect-src': ["'self'", ...supabaseConnectSrc],
+        'img-src': ["'self'", 'data:', ...supabaseConnectSrc],
       },
     },
   })
@@ -205,4 +216,16 @@ syncCategoryCatalog()
     // a Supabase access token passed as a query param (browsers can't set
     // custom headers on a WS handshake) -- see realtime/call-signaling.js.
     attachCallSignaling(server);
+
+    // The Agency "Auto-scan" sweep -- re-checks every support thread that's
+    // still waiting on a reply so nothing sits unanswered just because
+    // Auto-reply was off when it arrived, Groq hiccuped, or more context is
+    // now available. A no-op read (one query) whenever the Auto-scan toggle
+    // itself is off (see settings.service.js / support-agent.service.js), so
+    // this timer running is harmless even when nobody has ever turned it on.
+    // Wrapped in try/catch since a timer callback throwing would otherwise
+    // crash the whole process.
+    setInterval(() => {
+      runAutoScanSweep().catch((err) => console.error('agency auto-scan sweep failed:', err.message));
+    }, 3 * 60 * 1000);
   });
