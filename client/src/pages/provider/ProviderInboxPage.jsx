@@ -21,21 +21,21 @@ export default function ProviderInboxPage() {
   return (
     <div>
       <h1 className="font-display text-2xl mb-4">Inbox</h1>
-      <div className="divide-y divide-ink-900/8 rounded-2xl border border-ink-900/8 bg-white shadow-card overflow-hidden">
+      <div className="divide-y divide-navy-900/8 rounded-2xl border border-navy-900/8 bg-white shadow-card overflow-hidden">
         {conversations.map((c) => (
-          <Link key={c.id} to={`/provider/inbox/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ember-50/50">
-            <div className="h-11 w-11 flex-shrink-0 rounded-full bg-ember-100 flex items-center justify-center font-display text-ember-600 overflow-hidden">
+          <Link key={c.id} to={`/provider/inbox/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-accent-50/50">
+            <div className="h-11 w-11 flex-shrink-0 rounded-full bg-accent-100 flex items-center justify-center font-display text-accent-600 overflow-hidden">
               <SafeImage src={c.avatar_url} className="h-full w-full object-cover" fallback={c.first_name[0]} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
                 <p className="font-medium truncate">{c.first_name} {c.last_name}</p>
-                <span className="text-xs text-ink-700/50">{new Date(c.last_message_at).toLocaleDateString()}</span>
+                <span className="text-xs text-navy-700/50">{new Date(c.last_message_at).toLocaleDateString()}</span>
               </div>
-              <p className="text-sm text-ink-700/60 truncate">{c.last_message || 'No messages yet'}</p>
+              <p className="text-sm text-navy-700/60 truncate">{c.last_message || 'No messages yet'}</p>
             </div>
             {Number(c.unread_count) > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-ember-500 px-1.5 text-xs font-bold text-white">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-xs font-bold text-white">
                 {c.unread_count}
               </span>
             )}

@@ -60,10 +60,10 @@ export default function CategoryPicker({ selectedIds, onChange }) {
             const c = byId.get(id);
             if (!c) return null;
             return (
-              <span key={id} className="flex items-center gap-1.5 rounded-full bg-ember-50 border border-ember-200 px-3 py-1 text-sm text-ember-700">
+              <span key={id} className="flex items-center gap-1.5 rounded-full bg-accent-50 border border-accent-200 px-3 py-1 text-sm text-accent-700">
                 <span aria-hidden>{c.icon}</span>
                 {c.name}
-                <button type="button" onClick={() => remove(id)} className="ml-0.5 text-ember-500 hover:text-ember-700" aria-label={`Remove ${c.name}`}>
+                <button type="button" onClick={() => remove(id)} className="ml-0.5 text-accent-500 hover:text-accent-700" aria-label={`Remove ${c.name}`}>
                   ✕
                 </button>
               </span>
@@ -76,10 +76,10 @@ export default function CategoryPicker({ selectedIds, onChange }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search services (e.g. locksmith, house cleaning, tutoring)"
-        className="mb-3 w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+        className="mb-3 w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
       />
 
-      {loading && <p className="text-sm text-ink-700/60">Loading categories…</p>}
+      {loading && <p className="text-sm text-navy-700/60">Loading categories…</p>}
       {!loading && groups.length === 0 && (
         <p className="text-sm text-red-600">No categories are available right now. Please try again shortly.</p>
       )}
@@ -88,14 +88,14 @@ export default function CategoryPicker({ selectedIds, onChange }) {
         {filteredGroups.map((g) => {
           const isOpen = q ? true : !!expanded[g.slug];
           return (
-            <div key={g.slug} className="rounded-xl border border-ink-900/8">
+            <div key={g.slug} className="rounded-xl border border-navy-900/8">
               <button
                 type="button"
                 onClick={() => toggleExpand(g.slug)}
-                className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-ink-800"
+                className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-navy-800"
               >
-                <span>{g.name} <span className="text-ink-700/40 font-normal">({g.categories.length})</span></span>
-                <span className="text-ink-700/40">{isOpen ? '▾' : '▸'}</span>
+                <span>{g.name} <span className="text-navy-700/40 font-normal">({g.categories.length})</span></span>
+                <span className="text-navy-700/40">{isOpen ? '▾' : '▸'}</span>
               </button>
               {isOpen && (
                 <div className="flex flex-wrap gap-2 px-3 pb-3">
@@ -105,7 +105,7 @@ export default function CategoryPicker({ selectedIds, onChange }) {
                       type="button"
                       onClick={() => toggle(c.id)}
                       className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                        selectedIds.includes(c.id) ? 'border-ember-500 bg-ember-50 text-ember-700' : 'border-ink-900/10 hover:border-ink-900/25'
+                        selectedIds.includes(c.id) ? 'border-accent-500 bg-accent-50 text-accent-700' : 'border-navy-900/10 hover:border-navy-900/25'
                       }`}
                     >
                       <span className="mr-1" aria-hidden>{c.icon}</span>
@@ -117,7 +117,7 @@ export default function CategoryPicker({ selectedIds, onChange }) {
             </div>
           );
         })}
-        {q && filteredGroups.length === 0 && <p className="px-1 py-2 text-sm text-ink-700/60">No services match "{query}".</p>}
+        {q && filteredGroups.length === 0 && <p className="px-1 py-2 text-sm text-navy-700/60">No services match "{query}".</p>}
       </div>
     </div>
   );

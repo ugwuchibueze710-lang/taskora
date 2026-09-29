@@ -71,62 +71,62 @@ export default function ProviderProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card">
         <div className="flex gap-5">
-          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-3xl font-display text-ember-600">
+          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-accent-100 flex items-center justify-center text-3xl font-display text-accent-600">
             <SafeImage src={provider.image_url} className="h-full w-full object-cover" fallback={provider.first_name[0]} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>
-              {provider.is_pro && <span className="rounded-full bg-ink-900 px-2 py-0.5 text-xs font-bold text-white">PRO</span>}
+              {provider.is_pro && <span className="rounded-full bg-navy-900 px-2 py-0.5 text-xs font-bold text-white">PRO</span>}
               {provider.is_boosted && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Sponsored</span>}
               {provider.verified && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">Verified</span>}
             </div>
             <div className="mt-1 flex items-center gap-3 text-sm">
               <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
-              {distanceMiles != null && <span className="text-ink-700/60">{distanceMiles} mi away</span>}
+              {distanceMiles != null && <span className="text-navy-700/60">{distanceMiles} mi away</span>}
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {categories.map((c) => (
-                <span key={c.id} className="rounded-full bg-ember-50 px-2.5 py-0.5 text-xs text-ember-700">{c.icon} {c.name}</span>
+                <span key={c.id} className="rounded-full bg-accent-50 px-2.5 py-0.5 text-xs text-accent-700">{c.icon} {c.name}</span>
               ))}
             </div>
           </div>
         </div>
 
-        {provider.description && <p className="mt-4 text-ink-700/80">{provider.description}</p>}
+        {provider.description && <p className="mt-4 text-navy-700/80">{provider.description}</p>}
 
         {!isOwnProfile && (
           <div className="mt-5 flex flex-wrap gap-2">
-            <button onClick={openMessage} className="rounded-full bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800">
+            <button onClick={openMessage} className="rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white hover:bg-navy-800">
               💬 Message
             </button>
-            <button onClick={() => setShowQuoteForm((s) => !s)} className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+            <button onClick={() => setShowQuoteForm((s) => !s)} className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600">
               Request a Quote
             </button>
-            <button onClick={toggleFavorite} className="rounded-full border border-ink-900/15 px-5 py-2 text-sm font-semibold hover:bg-ink-900/5">
+            <button onClick={toggleFavorite} className="rounded-full border border-navy-900/15 px-5 py-2 text-sm font-semibold hover:bg-navy-900/5">
               {isFavorite ? '❤️ Saved' : '🤍 Save'}
             </button>
           </div>
         )}
 
         {showQuoteForm && (
-          <form onSubmit={submitQuoteRequest} className="mt-4 rounded-xl border border-ink-900/10 bg-ember-50/40 p-4 animate-popIn">
+          <form onSubmit={submitQuoteRequest} className="mt-4 rounded-xl border border-navy-900/10 bg-accent-50/40 p-4 animate-popIn">
             <label className="text-sm font-medium">Optional message</label>
             <textarea
               value={quoteMessage}
               onChange={(e) => setQuoteMessage(e.target.value)}
               rows={3}
               placeholder="Describe what you need..."
-              className="mt-1 w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+              className="mt-1 w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
             />
-            <button disabled={sending} className="mt-2 rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60">
+            <button disabled={sending} className="mt-2 rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60">
               {sending ? 'Sending…' : 'Send Request'}
             </button>
           </form>
         )}
-        {notice && <p className="mt-3 text-sm text-ink-700">{notice}</p>}
+        {notice && <p className="mt-3 text-sm text-navy-700">{notice}</p>}
       </div>
 
       {photos.length > 0 && (
@@ -139,7 +139,7 @@ export default function ProviderProfilePage() {
                 src={p.url}
                 alt={p.caption || ''}
                 className="aspect-square rounded-xl object-cover"
-                fallback={<div className="aspect-square rounded-xl bg-ink-900/5 flex items-center justify-center text-ink-700/30 text-xl">🖼️</div>}
+                fallback={<div className="aspect-square rounded-xl bg-navy-900/5 flex items-center justify-center text-navy-700/30 text-xl">🖼️</div>}
               />
             ))}
           </div>
@@ -150,7 +150,7 @@ export default function ProviderProfilePage() {
         <h2 className="font-display text-xl mb-2">Services</h2>
         <div className="flex flex-wrap gap-1.5">
           {services.map((s) => (
-            <span key={s.id} className="rounded-full border border-ink-900/10 px-3 py-1 text-sm">{s.name}</span>
+            <span key={s.id} className="rounded-full border border-navy-900/10 px-3 py-1 text-sm">{s.name}</span>
           ))}
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function ProviderProfilePage() {
           <h2 className="font-display text-xl mb-2">Availability</h2>
           <div className="flex flex-wrap gap-2 text-sm">
             {availability.map((a, i) => (
-              <span key={i} className="rounded-lg bg-white border border-ink-900/10 px-3 py-1.5">
+              <span key={i} className="rounded-lg bg-white border border-navy-900/10 px-3 py-1.5">
                 {DAYS[a.day_of_week]}: {a.start_time?.slice(0, 5)}–{a.end_time?.slice(0, 5)}
               </span>
             ))}
@@ -170,18 +170,18 @@ export default function ProviderProfilePage() {
 
       <div>
         <h2 className="font-display text-xl mb-2">Reviews</h2>
-        {reviews.length === 0 && <p className="text-ink-700/60 text-sm">No reviews yet.</p>}
+        {reviews.length === 0 && <p className="text-navy-700/60 text-sm">No reviews yet.</p>}
         <div className="space-y-3">
           {reviews.map((r) => (
-            <div key={r.id} className="rounded-xl border border-ink-900/8 bg-white p-4">
+            <div key={r.id} className="rounded-xl border border-navy-900/8 bg-white p-4">
               <div className="flex items-center justify-between">
                 <StarRating rating={r.rating} />
-                <span className="text-xs text-ink-700/50">{new Date(r.created_at).toLocaleDateString()}</span>
+                <span className="text-xs text-navy-700/50">{new Date(r.created_at).toLocaleDateString()}</span>
               </div>
               <p className="text-sm mt-1 font-medium">{r.first_name}</p>
-              {r.comment && <p className="text-sm text-ink-700/80 mt-1">{r.comment}</p>}
+              {r.comment && <p className="text-sm text-navy-700/80 mt-1">{r.comment}</p>}
               {r.provider_response && (
-                <div className="mt-2 rounded-lg bg-ink-900/5 p-2 text-sm">
+                <div className="mt-2 rounded-lg bg-navy-900/5 p-2 text-sm">
                   <span className="font-medium">Provider response: </span>{r.provider_response}
                 </div>
               )}

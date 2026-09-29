@@ -29,13 +29,13 @@ function IncomingCallModal() {
   if (!incomingCall) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-900/40 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-navy-900/40 backdrop-blur-sm px-4">
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-ember-100 text-3xl font-display text-ember-600 animate-pulse">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-accent-100 text-3xl font-display text-accent-600 animate-pulse">
           {incomingCall.callerName?.[0]?.toUpperCase() || '?'}
         </div>
-        <p className="text-sm text-ink-700/60">Incoming call</p>
-        <p className="mt-1 font-display text-xl text-ink-900">{incomingCall.callerName || 'Someone'}</p>
+        <p className="text-sm text-navy-700/60">Incoming call</p>
+        <p className="mt-1 font-display text-xl text-navy-900">{incomingCall.callerName || 'Someone'}</p>
         <div className="mt-6 flex justify-center gap-4">
           <button
             onClick={declineCall}
@@ -66,7 +66,7 @@ function ActiveCallBar() {
     // Show a brief, dismissable toast for terminal call errors (declined, no
     // answer, connection failed) even once we're back to idle.
     return (
-      <div className="fixed bottom-4 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-ink-900 px-5 py-2.5 text-sm text-white shadow-lg">
+      <div className="fixed bottom-4 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-navy-900 px-5 py-2.5 text-sm text-white shadow-lg">
         {error}
         <button onClick={clearError} className="ml-3 text-white/60 hover:text-white">
           ✕
@@ -78,16 +78,16 @@ function ActiveCallBar() {
   const label = callState === 'calling' ? `Calling ${activeCall?.otherName || ''}…` : callState === 'connecting' ? 'Connecting…' : formatDuration(elapsed);
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-4 rounded-full bg-ink-900 px-5 py-3 text-white shadow-2xl">
+    <div className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-4 rounded-full bg-navy-900 px-5 py-3 text-white shadow-2xl">
       <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${callState === 'active' ? 'bg-green-400' : 'bg-ember-400 animate-pulse'}`} />
+        <span className={`h-2 w-2 rounded-full ${callState === 'active' ? 'bg-green-400' : 'bg-accent-400 animate-pulse'}`} />
         <span className="text-sm font-medium">{activeCall?.otherName || 'Call'}</span>
         <span className="text-xs text-white/60">{label}</span>
       </div>
       {callState === 'active' && (
         <button
           onClick={toggleMute}
-          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm ${muted ? 'bg-ember-500' : 'bg-white/10 hover:bg-white/20'}`}
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-sm ${muted ? 'bg-accent-500' : 'bg-white/10 hover:bg-white/20'}`}
           aria-label={muted ? 'Unmute' : 'Mute'}
         >
           {muted ? '🔇' : '🎙️'}

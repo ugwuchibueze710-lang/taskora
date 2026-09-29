@@ -27,15 +27,15 @@ export default function ProviderSettingsPage() {
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="font-display text-2xl">Provider Settings</h1>
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-3">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-medium">Automatic Reply</h2>
-            <p className="text-sm text-ink-700/60">Sent once automatically when a customer first messages you.</p>
+            <p className="text-sm text-navy-700/60">Sent once automatically when a customer first messages you.</p>
           </div>
           <button
             onClick={() => setAutoReplyEnabled((v) => !v)}
-            className={`h-6 w-11 rounded-full transition ${autoReplyEnabled ? 'bg-ember-500' : 'bg-ink-900/15'} relative`}
+            className={`h-6 w-11 rounded-full transition ${autoReplyEnabled ? 'bg-accent-500' : 'bg-navy-900/15'} relative`}
           >
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${autoReplyEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
@@ -45,9 +45,9 @@ export default function ProviderSettingsPage() {
           onChange={(e) => setAutoReplyMessage(e.target.value)}
           rows={3}
           placeholder="Thanks for reaching out! I usually respond within a few hours..."
-          className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm"
         />
-        <button onClick={save} className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">Save</button>
+        <button onClick={save} className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600">Save</button>
         {saved && <span className="ml-2 text-sm text-emerald-600">{saved}</span>}
       </div>
     </div>

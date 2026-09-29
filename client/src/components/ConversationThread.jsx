@@ -57,23 +57,23 @@ export default function ConversationThread({ conversationId }) {
   if (!messages) return <div className="flex justify-center py-16"><Spinner size={28} /></div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-160px)] rounded-2xl border border-ink-900/8 bg-white shadow-card overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-160px)] rounded-2xl border border-navy-900/8 bg-white shadow-card overflow-hidden">
       {other && (
-        <div className="flex items-center justify-between border-b border-ink-900/8 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-navy-900/8 px-4 py-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {other.avatarUrl ? (
               <img src={other.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900/5 text-sm font-medium text-ink-700/70">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900/5 text-sm font-medium text-navy-700/70">
                 {other.name?.[0]?.toUpperCase() || '?'}
               </div>
             )}
-            <span className="truncate font-medium text-ink-900">{other.name}</span>
+            <span className="truncate font-medium text-navy-900">{other.name}</span>
           </div>
           <button
             onClick={() => startCall(conversationId, other.name)}
             disabled={callState !== 'idle'}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ember-500 text-white hover:bg-ember-600 disabled:opacity-40"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white hover:bg-accent-600 disabled:opacity-40"
             aria-label={`Call ${other.name}`}
             title={`Call ${other.name}`}
           >
@@ -94,8 +94,8 @@ export default function ConversationThread({ conversationId }) {
             return (
               <div key={m.id} className="flex justify-start">
                 <a href={m.metadata?.pdfPath} target="_blank" rel="noreferrer"
-                  className="rounded-xl border border-ink-900/10 bg-white p-3 text-sm hover:border-ember-300">
-                  📄 {m.body} — <span className="text-ember-600 font-medium">Download PDF</span>
+                  className="rounded-xl border border-navy-900/10 bg-white p-3 text-sm hover:border-accent-300">
+                  📄 {m.body} — <span className="text-accent-600 font-medium">Download PDF</span>
                 </a>
               </div>
             );
@@ -103,13 +103,13 @@ export default function ConversationThread({ conversationId }) {
           if (['system', 'auto_reply', 'job_update', 'payment_update', 'completion_request', 'job_request'].includes(m.type)) {
             return (
               <div key={m.id} className="flex justify-center">
-                <span className="rounded-full bg-ink-900/5 px-3 py-1 text-xs text-ink-700/70">{m.body}</span>
+                <span className="rounded-full bg-navy-900/5 px-3 py-1 text-xs text-navy-700/70">{m.body}</span>
               </div>
             );
           }
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${mine ? 'bg-ember-500 text-white' : 'bg-ink-900/5 text-ink-900'}`}>
+              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${mine ? 'bg-accent-500 text-white' : 'bg-navy-900/5 text-navy-900'}`}>
                 {m.body}
               </div>
             </div>
@@ -117,14 +117,14 @@ export default function ConversationThread({ conversationId }) {
         })}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={send} className="flex gap-2 border-t border-ink-900/8 p-3">
+      <form onSubmit={send} className="flex gap-2 border-t border-navy-900/8 p-3">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message…"
-          className="flex-1 rounded-full border border-ink-900/15 px-4 py-2 text-sm outline-none focus:border-ember-400"
+          className="flex-1 rounded-full border border-navy-900/15 px-4 py-2 text-sm outline-none focus:border-accent-400"
         />
-        <button disabled={sending} className="rounded-full bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-60">
+        <button disabled={sending} className="rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-60">
           Send
         </button>
       </form>

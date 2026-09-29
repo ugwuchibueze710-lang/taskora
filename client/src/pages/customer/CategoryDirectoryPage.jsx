@@ -36,14 +36,14 @@ export default function CategoryDirectoryPage() {
   return (
     <div>
       <h1 className="font-display text-2xl mb-1">All services</h1>
-      <p className="text-ink-700/60 text-sm mb-4">Browse every service category on Taskora, or search for exactly what you need.</p>
+      <p className="text-navy-700/60 text-sm mb-4">Browse every service category on Taskora, or search for exactly what you need.</p>
 
       <input
         autoFocus
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search all services…"
-        className="mb-8 w-full max-w-md rounded-full border border-ink-900/15 px-4 py-2.5 text-sm outline-none focus:border-ember-400"
+        className="mb-8 w-full max-w-md rounded-full border border-navy-900/15 px-4 py-2.5 text-sm outline-none focus:border-accent-400"
       />
 
       {!groups && <div className="flex justify-center py-16"><Spinner size={28} /></div>}
@@ -60,7 +60,7 @@ export default function CategoryDirectoryPage() {
           </div>
         ))}
         {groups && visibleGroups.length === 0 && (
-          <p className="text-sm text-ink-700/60">No services match "{query}".</p>
+          <p className="text-sm text-navy-700/60">No services match "{query}".</p>
         )}
       </div>
     </div>

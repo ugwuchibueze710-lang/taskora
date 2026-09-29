@@ -60,13 +60,13 @@ export default function SearchResultsPage() {
         <h1 className="font-display text-2xl">{q ? `Results for "${q}"` : categoryName || 'All providers'}</h1>
         <Link
           to={categoryId ? `/projects/new?categoryId=${categoryId}` : '/projects/new'}
-          className="hidden shrink-0 rounded-full border border-ember-300 px-3 py-1.5 text-xs font-semibold text-ember-700 hover:bg-ember-50 sm:block"
+          className="hidden shrink-0 rounded-full border border-accent-300 px-3 py-1.5 text-xs font-semibold text-accent-700 hover:bg-accent-50 sm:block"
         >
           Or post this as a project →
         </Link>
       </div>
       {interpreted && (
-        <p className="text-sm text-ink-700/60 mb-4">
+        <p className="text-sm text-navy-700/60 mb-4">
           Searching {interpreted.keywords?.length ? `for "${interpreted.keywords.join(', ')}"` : 'nearby providers'}
           {interpreted.dayOfWeek != null && ` · available ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][interpreted.dayOfWeek]}`}
           {interpreted.budgetMax && ` · under $${interpreted.budgetMax}`}

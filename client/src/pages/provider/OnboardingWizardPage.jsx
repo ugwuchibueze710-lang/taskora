@@ -118,20 +118,20 @@ export default function OnboardingWizardPage() {
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
-        <div className="flex justify-between text-xs text-ink-700/60 mb-1">
+        <div className="flex justify-between text-xs text-navy-700/60 mb-1">
           <span>Step {step + 1} of {STEPS.length}</span>
           <span>{STEPS[step]}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-ink-900/10 overflow-hidden">
-          <div className="h-full bg-ember-500 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+        <div className="h-1.5 rounded-full bg-navy-900/10 overflow-hidden">
+          <div className="h-full bg-accent-500 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card min-h-[280px]">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card min-h-[280px]">
         {step === 0 && (
           <div>
             <h2 className="font-display text-xl mb-1">What services do you offer?</h2>
-            <p className="text-sm text-ink-700/60 mb-3">
+            <p className="text-sm text-navy-700/60 mb-3">
               Search or browse by section, and select as many as you genuinely offer — there's no limit.
             </p>
             <CategoryPicker selectedIds={selectedCategoryIds} onChange={setSelectedCategoryIds} />
@@ -141,16 +141,16 @@ export default function OnboardingWizardPage() {
         {step === 1 && (
           <div>
             <h2 className="font-display text-xl mb-1">Add specific services (optional)</h2>
-            <p className="text-sm text-ink-700/60 mb-3">
+            <p className="text-sm text-navy-700/60 mb-3">
               Break a category down further, e.g. "IKEA Assembly" under Furniture Assembly — or skip this and continue.
             </p>
             {selectedCategoryIds.map((catId) => (
               <div key={catId} className="mb-3">
-                <p className="text-sm font-medium text-ink-700/70 mb-1">{categories.find((c) => c.id === catId)?.name}</p>
+                <p className="text-sm font-medium text-navy-700/70 mb-1">{categories.find((c) => c.id === catId)?.name}</p>
                 <div className="flex flex-wrap gap-2">
                   {(servicesByCategory[catId] || []).map((s) => (
                     <button key={s.id} onClick={() => toggleService(s.id)}
-                      className={`rounded-full border px-3 py-1 text-sm ${selectedServiceIds.includes(s.id) ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+                      className={`rounded-full border px-3 py-1 text-sm ${selectedServiceIds.includes(s.id) ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                       {s.name}
                     </button>
                   ))}
@@ -159,8 +159,8 @@ export default function OnboardingWizardPage() {
             ))}
             <div className="flex gap-2 mt-2">
               <input value={customServiceName} onChange={(e) => setCustomServiceName(e.target.value)} placeholder="Add a custom service"
-                className="flex-1 rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm" />
-              <button onClick={addCustomService} className="rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5">Add</button>
+                className="flex-1 rounded-lg border border-navy-900/15 px-3 py-1.5 text-sm" />
+              <button onClick={addCustomService} className="rounded-lg border border-navy-900/15 px-3 py-1.5 text-sm hover:bg-navy-900/5">Add</button>
             </div>
           </div>
         )}
@@ -170,7 +170,7 @@ export default function OnboardingWizardPage() {
             <h2 className="font-display text-xl mb-3">Describe what you do (optional)</h2>
             <textarea value={business.description} onChange={(e) => setBusiness({ ...business, description: e.target.value })} rows={5}
               placeholder="Tell customers about your experience and what makes you great..."
-              className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+              className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
           </div>
         )}
 
@@ -178,9 +178,9 @@ export default function OnboardingWizardPage() {
           <div className="space-y-2">
             <h2 className="font-display text-xl mb-3">Business info (optional)</h2>
             <input value={business.businessName} onChange={(e) => setBusiness({ ...business, businessName: e.target.value })} placeholder="Business name"
-              className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+              className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
             <input value={business.businessPhone} onChange={(e) => setBusiness({ ...business, businessPhone: e.target.value })} placeholder="Phone number"
-              className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+              className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
           </div>
         )}
 
@@ -196,10 +196,10 @@ export default function OnboardingWizardPage() {
           <div>
             <h2 className="font-display text-xl mb-3">Availability (optional)</h2>
             <div className="flex gap-2 mb-3">
-              <button onClick={() => setAvailabilityMode('always')} className={`rounded-full px-4 py-1.5 text-sm border ${availabilityMode === 'always' ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+              <button onClick={() => setAvailabilityMode('always')} className={`rounded-full px-4 py-1.5 text-sm border ${availabilityMode === 'always' ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                 Available All the Time
               </button>
-              <button onClick={() => setAvailabilityMode('custom')} className={`rounded-full px-4 py-1.5 text-sm border ${availabilityMode === 'custom' ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+              <button onClick={() => setAvailabilityMode('custom')} className={`rounded-full px-4 py-1.5 text-sm border ${availabilityMode === 'custom' ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                 Set My Availability
               </button>
             </div>
@@ -207,7 +207,7 @@ export default function OnboardingWizardPage() {
               <div className="flex flex-wrap gap-2">
                 {DAY_NAMES.map((d, i) => (
                   <button key={i} onClick={() => toggleSlot(i)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${slots.some((s) => s.dayOfWeek === i) ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+                    className={`rounded-lg border px-3 py-1.5 text-sm ${slots.some((s) => s.dayOfWeek === i) ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                     {d} 9–5
                   </button>
                 ))}
@@ -221,12 +221,12 @@ export default function OnboardingWizardPage() {
             <h2 className="font-display text-xl mb-3">How far will you travel?</h2>
             <div className="flex gap-2">
               {[5, 10, 25].map((r) => (
-                <button key={r} onClick={() => setRadiusMiles(r)} className={`rounded-full px-4 py-1.5 text-sm border ${radiusMiles === r ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+                <button key={r} onClick={() => setRadiusMiles(r)} className={`rounded-full px-4 py-1.5 text-sm border ${radiusMiles === r ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                   {r} miles
                 </button>
               ))}
               <input type="number" min="1" value={radiusMiles} onChange={(e) => setRadiusMiles(Number(e.target.value))}
-                className="w-24 rounded-full border border-ink-900/15 px-3 py-1.5 text-sm" />
+                className="w-24 rounded-full border border-navy-900/15 px-3 py-1.5 text-sm" />
             </div>
             <div className="mt-2">
               <ProviderLocationPicker
@@ -242,7 +242,7 @@ export default function OnboardingWizardPage() {
           <div className="text-center py-6">
             <div className="text-5xl mb-3">🎉</div>
             <h2 className="font-display text-xl mb-1">Ready to publish!</h2>
-            <p className="text-ink-700/70 text-sm">Your profile will go live to customers near you right away.</p>
+            <p className="text-navy-700/70 text-sm">Your profile will go live to customers near you right away.</p>
           </div>
         )}
 
@@ -254,11 +254,11 @@ export default function OnboardingWizardPage() {
           Back
         </button>
         {step < STEPS.length - 1 ? (
-          <button disabled={busy} onClick={next} className="rounded-full bg-ember-500 px-6 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60">
+          <button disabled={busy} onClick={next} className="rounded-full bg-accent-500 px-6 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60">
             {busy ? 'Saving…' : 'Continue'}
           </button>
         ) : (
-          <button disabled={busy} onClick={publish} className="rounded-full bg-ink-900 px-6 py-2 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-60">
+          <button disabled={busy} onClick={publish} className="rounded-full bg-navy-900 px-6 py-2 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-60">
             {busy ? 'Publishing…' : 'Publish My Profile'}
           </button>
         )}
@@ -304,14 +304,14 @@ function ImageStep() {
     <div>
       <h2 className="font-display text-xl mb-3">Provider image (optional)</h2>
       <div className="flex flex-wrap gap-2">
-        <button disabled={busy} onClick={useProfilePic} className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5">
+        <button disabled={busy} onClick={useProfilePic} className="rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5">
           Use my profile picture
         </button>
-        <label className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5 cursor-pointer">
+        <label className="rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5 cursor-pointer">
           Upload a logo
           <input type="file" accept="image/*" hidden onChange={(e) => upload(e, 'logo')} />
         </label>
-        <label className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5 cursor-pointer">
+        <label className="rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5 cursor-pointer">
           Upload a custom photo
           <input type="file" accept="image/*" hidden onChange={(e) => upload(e, 'custom')} />
         </label>
@@ -334,7 +334,7 @@ function PortfolioStep() {
   return (
     <div>
       <h2 className="font-display text-xl mb-3">Portfolio photos (optional)</h2>
-      <label className="inline-block rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5 cursor-pointer">
+      <label className="inline-block rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5 cursor-pointer">
         Upload photos of previous work
         <input type="file" accept="image/*" multiple hidden onChange={upload} />
       </label>

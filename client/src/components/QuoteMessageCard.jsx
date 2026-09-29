@@ -39,25 +39,25 @@ export default function QuoteMessageCard({ quoteId }) {
   };
 
   return (
-    <div className="rounded-xl border border-ember-200 bg-ember-50 p-3 max-w-sm">
-      <p className="text-xs font-semibold text-ember-700 uppercase tracking-wide">Quote</p>
-      <p className="text-2xl font-display text-ink-900">${quote.price}</p>
-      {quote.description && <p className="text-sm text-ink-700/80 mt-1">{quote.description}</p>}
+    <div className="rounded-xl border border-accent-200 bg-accent-50 p-3 max-w-sm">
+      <p className="text-xs font-semibold text-accent-700 uppercase tracking-wide">Quote</p>
+      <p className="text-2xl font-display text-navy-900">${quote.price}</p>
+      {quote.description && <p className="text-sm text-navy-700/80 mt-1">{quote.description}</p>}
       {quote.scheduled_date && (
-        <p className="text-xs text-ink-700/60 mt-1">Scheduled: {new Date(quote.scheduled_date).toLocaleDateString()}</p>
+        <p className="text-xs text-navy-700/60 mt-1">Scheduled: {new Date(quote.scheduled_date).toLocaleDateString()}</p>
       )}
-      <p className="text-xs mt-1 text-ink-700/60">Status: {quote.status}</p>
+      <p className="text-xs mt-1 text-navy-700/60">Status: {quote.status}</p>
       {isCustomer && quote.status === 'sent' && (
         <div className="mt-2 flex gap-2">
-          <button disabled={busy} onClick={accept} className="rounded-full bg-ember-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ember-600">
+          <button disabled={busy} onClick={accept} className="rounded-full bg-accent-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-600">
             Accept
           </button>
-          <button disabled={busy} onClick={decline} className="rounded-full border border-ink-900/15 px-3 py-1.5 text-xs font-semibold hover:bg-ink-900/5">
+          <button disabled={busy} onClick={decline} className="rounded-full border border-navy-900/15 px-3 py-1.5 text-xs font-semibold hover:bg-navy-900/5">
             Decline
           </button>
         </div>
       )}
-      {notice && <p className="text-xs mt-1 text-ink-700">{notice}</p>}
+      {notice && <p className="text-xs mt-1 text-navy-700">{notice}</p>}
     </div>
   );
 }

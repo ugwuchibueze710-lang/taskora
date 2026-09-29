@@ -99,24 +99,24 @@ export default function ProviderServicesPage() {
         {saved && <span className="text-sm text-emerald-600">{saved}</span>}
       </div>
 
-      <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <h2 className="font-medium mb-2">Services you offer</h2>
-        <p className="text-sm text-ink-700/60 mb-2">Add or remove as many services as you genuinely offer — there's no limit.</p>
+        <p className="text-sm text-navy-700/60 mb-2">Add or remove as many services as you genuinely offer — there's no limit.</p>
         <CategoryPicker selectedIds={me.categories.map((c) => c.id)} onChange={saveCategoryIds} />
       </section>
 
-      <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <h2 className="font-medium mb-3">Profile photo / company logo</h2>
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-ember-100 flex items-center justify-center text-xl font-display text-ember-600">
+          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-accent-100 flex items-center justify-center text-xl font-display text-accent-600">
             <SafeImage src={me.provider.image_url} className="h-full w-full object-cover" fallback="?" />
           </div>
           <div className="flex flex-wrap gap-2">
-            <label className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5 cursor-pointer">
+            <label className="rounded-full border border-navy-900/15 px-3 py-1.5 text-sm hover:bg-navy-900/5 cursor-pointer">
               Upload photo
               <input type="file" accept="image/*" hidden onChange={uploadProfileImage} />
             </label>
-            <label className="rounded-full border border-ink-900/15 px-3 py-1.5 text-sm hover:bg-ink-900/5 cursor-pointer">
+            <label className="rounded-full border border-navy-900/15 px-3 py-1.5 text-sm hover:bg-navy-900/5 cursor-pointer">
               Upload company logo
               <input type="file" accept="image/*" hidden onChange={uploadLogo} />
             </label>
@@ -124,15 +124,15 @@ export default function ProviderServicesPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <h2 className="font-medium mb-2">Services</h2>
         {me.categories.map((cat) => (
           <div key={cat.id} className="mb-2">
-            <p className="text-xs text-ink-700/60 mb-1">{cat.name}</p>
+            <p className="text-xs text-navy-700/60 mb-1">{cat.name}</p>
             <div className="flex flex-wrap gap-2">
               {(servicesByCategory[cat.id] || []).map((s) => (
                 <button key={s.id} onClick={() => toggleService(s.id)}
-                  className={`rounded-full border px-3 py-1 text-sm ${me.services.some((x) => x.id === s.id) ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+                  className={`rounded-full border px-3 py-1 text-sm ${me.services.some((x) => x.id === s.id) ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                   {s.name}
                 </button>
               ))}
@@ -141,26 +141,26 @@ export default function ProviderServicesPage() {
         ))}
       </section>
 
-      <form onSubmit={saveBusiness} className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-2">
+      <form onSubmit={saveBusiness} className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card space-y-2">
         <h2 className="font-medium mb-1">Business info & pricing</h2>
-        <input name="businessName" defaultValue={me.provider.business_name || ''} placeholder="Business name" className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
-        <textarea name="description" defaultValue={me.provider.description || ''} placeholder="Description" rows={3} className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
-        <input name="businessPhone" defaultValue={me.provider.business_phone || ''} placeholder="Phone" className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+        <input name="businessName" defaultValue={me.provider.business_name || ''} placeholder="Business name" className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
+        <textarea name="description" defaultValue={me.provider.description || ''} placeholder="Description" rows={3} className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
+        <input name="businessPhone" defaultValue={me.provider.business_phone || ''} placeholder="Phone" className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
         <div className="flex gap-2">
-          <select name="pricingMode" defaultValue={me.provider.pricing_mode} className="rounded-lg border border-ink-900/15 px-3 py-2 text-sm">
+          <select name="pricingMode" defaultValue={me.provider.pricing_mode} className="rounded-lg border border-navy-900/15 px-3 py-2 text-sm">
             <option value="hidden">Don't publish pricing (Request a Quote)</option>
             <option value="fixed">Fixed price</option>
             <option value="starting">Starting price</option>
             <option value="hourly">Hourly price</option>
           </select>
-          <input name="priceAmount" type="number" step="0.01" defaultValue={me.provider.price_amount || ''} placeholder="Amount" className="w-32 rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+          <input name="priceAmount" type="number" step="0.01" defaultValue={me.provider.price_amount || ''} placeholder="Amount" className="w-32 rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
         </div>
-        <button className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">Save</button>
+        <button className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600">Save</button>
       </form>
 
-      <section className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <h2 className="font-medium mb-2">Portfolio photos</h2>
-        <label className="inline-block rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5 cursor-pointer">
+        <label className="inline-block rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5 cursor-pointer">
           Upload photos
           <input type="file" accept="image/*" multiple hidden onChange={uploadPhotos} />
         </label>
@@ -170,7 +170,7 @@ export default function ProviderServicesPage() {
               <SafeImage
                 src={p.url}
                 className="aspect-square rounded-lg object-cover"
-                fallback={<div className="aspect-square rounded-lg bg-ink-900/5 flex items-center justify-center text-ink-700/30 text-lg">🖼️</div>}
+                fallback={<div className="aspect-square rounded-lg bg-navy-900/5 flex items-center justify-center text-navy-700/30 text-lg">🖼️</div>}
               />
               <button onClick={() => deletePhoto(p.id)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100">✕</button>
             </div>

@@ -47,7 +47,7 @@ export default function ProviderEarningsPage() {
           <p className="font-medium text-amber-800">Set up payouts to get paid</p>
           <p className="text-sm text-amber-700/80 mt-1">Connect your bank account through Stripe so Taskora can pay you after each confirmed job.</p>
           {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
-          <button disabled={busy} onClick={connect} className="mt-2 rounded-full bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800 disabled:opacity-60">
+          <button disabled={busy} onClick={connect} className="mt-2 rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-60">
             {busy ? 'Redirecting…' : 'Set Up Payouts with Stripe'}
           </button>
         </div>
@@ -62,13 +62,13 @@ export default function ProviderEarningsPage() {
 
       <div>
         <h2 className="font-display text-xl mb-2">Payout history</h2>
-        {earnings.payouts.length === 0 && <p className="text-sm text-ink-700/60">No payouts yet.</p>}
+        {earnings.payouts.length === 0 && <p className="text-sm text-navy-700/60">No payouts yet.</p>}
         <div className="space-y-2">
           {earnings.payouts.map((p) => (
-            <div key={p.id} className="flex justify-between rounded-xl border border-ink-900/8 bg-white p-3 text-sm">
+            <div key={p.id} className="flex justify-between rounded-xl border border-navy-900/8 bg-white p-3 text-sm">
               <span>{new Date(p.created_at).toLocaleDateString()}</span>
               <span className="font-medium">${p.amount}</span>
-              <span className="text-ink-700/60">{p.status}</span>
+              <span className="text-navy-700/60">{p.status}</span>
             </div>
           ))}
         </div>
@@ -79,9 +79,9 @@ export default function ProviderEarningsPage() {
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-xl border border-ink-900/8 bg-white p-4 shadow-card">
+    <div className="rounded-xl border border-navy-900/8 bg-white p-4 shadow-card">
       <p className="font-display text-xl">${value}</p>
-      <p className="text-xs text-ink-700/60 mt-1">{label}</p>
+      <p className="text-xs text-navy-700/60 mt-1">{label}</p>
     </div>
   );
 }

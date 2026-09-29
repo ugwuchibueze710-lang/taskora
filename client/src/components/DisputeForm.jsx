@@ -39,11 +39,11 @@ export default function DisputeForm({ jobId, onDone, redirectTo = '/jobs' }) {
   return (
     <form onSubmit={submit} className="rounded-2xl border border-red-200 bg-red-50 p-5 space-y-2 animate-popIn">
       <h3 className="font-medium text-red-800">Report a problem</h3>
-      <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm">
+      <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm">
         {REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Tell us what happened"
-        className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm" />
+        className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm" />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button disabled={busy} className="rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
         {busy ? 'Submitting…' : 'Submit Dispute'}

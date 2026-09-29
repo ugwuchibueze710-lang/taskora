@@ -25,8 +25,8 @@ export default function ProviderDashboardPage() {
       <div className="mx-auto max-w-md text-center py-16">
         <div className="text-5xl mb-4">🧰</div>
         <h1 className="font-display text-2xl mb-2">Set up your provider profile</h1>
-        <p className="text-ink-700/70 mb-6">Choose your categories, add a few details, and you can be live in minutes.</p>
-        <Link to="/provider/onboarding" className="rounded-full bg-ember-500 px-6 py-2.5 font-semibold text-white hover:bg-ember-600">
+        <p className="text-navy-700/70 mb-6">Choose your categories, add a few details, and you can be live in minutes.</p>
+        <Link to="/provider/onboarding" className="rounded-full bg-accent-500 px-6 py-2.5 font-semibold text-white hover:bg-accent-600">
           Start Setup
         </Link>
       </div>
@@ -65,7 +65,7 @@ export default function ProviderDashboardPage() {
                 Pro for priority placement above non-priority providers in relevant searches.
               </p>
             </div>
-            <Link to="/provider/pro" className="rounded-full bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800 whitespace-nowrap">
+            <Link to="/provider/pro" className="rounded-full bg-navy-900 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800 whitespace-nowrap">
               Upgrade to Pro
             </Link>
           </div>
@@ -85,19 +85,19 @@ export default function ProviderDashboardPage() {
           <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>
           <div className="flex items-center gap-2 mt-1">
             <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
-            <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${provider.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-900/10 text-ink-700/60'}`}>
+            <span className={`text-xs font-semibold rounded-full px-2 py-0.5 ${provider.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-navy-900/10 text-navy-700/60'}`}>
               {provider.status}
             </span>
           </div>
         </div>
         {provider.status !== 'active' ? (
-          <Link to="/provider/onboarding" className="rounded-full bg-ember-500 px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+          <Link to="/provider/onboarding" className="rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600">
             Finish Setup
           </Link>
         ) : (
           <button
             onClick={async () => { await api.post('/providers/me/pause'); location.reload(); }}
-            className="rounded-full border border-ink-900/15 px-4 py-2 text-sm hover:bg-ink-900/5"
+            className="rounded-full border border-navy-900/15 px-4 py-2 text-sm hover:bg-navy-900/5"
           >
             Pause Profile
           </button>
@@ -123,20 +123,20 @@ export default function ProviderDashboardPage() {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-xl border border-ink-900/8 bg-white p-4 shadow-card text-center">
+    <div className="rounded-xl border border-navy-900/8 bg-white p-4 shadow-card text-center">
       <p className="font-display text-2xl">{value}</p>
-      <p className="text-xs text-ink-700/60 mt-1">{label}</p>
+      <p className="text-xs text-navy-700/60 mt-1">{label}</p>
     </div>
   );
 }
 
 function QuickLink({ to, icon, label, hint }) {
   return (
-    <Link to={to} className="flex items-center gap-3 rounded-xl border border-ink-900/8 bg-white p-4 shadow-card hover:border-ember-300">
+    <Link to={to} className="flex items-center gap-3 rounded-xl border border-navy-900/8 bg-white p-4 shadow-card hover:border-accent-300">
       <span className="text-2xl">{icon}</span>
       <div>
         <p className="font-medium">{label}</p>
-        <p className="text-xs text-ink-700/60">{hint}</p>
+        <p className="text-xs text-navy-700/60">{hint}</p>
       </div>
     </Link>
   );

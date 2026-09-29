@@ -37,11 +37,11 @@ export default function ProviderJobDetailPage() {
         <StatusBadge status={job.status} />
       </div>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-2">
-        <p className="text-ink-700/80">{job.service_description}</p>
-        <div className="pt-2 border-t border-ink-900/8 text-sm space-y-1">
-          <div className="flex justify-between text-ink-700/60"><span>Customer's total</span><span>${Number(job.price).toFixed(2)}</span></div>
-          <div className="flex justify-between text-ink-700/60"><span>Taskora platform fee (5%)</span><span>-${job.platform_fee}</span></div>
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card space-y-2">
+        <p className="text-navy-700/80">{job.service_description}</p>
+        <div className="pt-2 border-t border-navy-900/8 text-sm space-y-1">
+          <div className="flex justify-between text-navy-700/60"><span>Customer's total</span><span>${Number(job.price).toFixed(2)}</span></div>
+          <div className="flex justify-between text-navy-700/60"><span>Taskora platform fee (5%)</span><span>-${job.platform_fee}</span></div>
           <div className="flex justify-between font-semibold"><span>You receive</span><span>${job.provider_amount}</span></div>
         </div>
       </div>
@@ -60,17 +60,17 @@ export default function ProviderJobDetailPage() {
           </>
         )}
         {job.status === 'provider_accepted' && (
-          <button disabled={busy} onClick={() => act('start')} className="rounded-full bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800">
+          <button disabled={busy} onClick={() => act('start')} className="rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white hover:bg-navy-800">
             Start Job
           </button>
         )}
         {['provider_accepted', 'in_progress'].includes(job.status) && (
-          <button disabled={busy} onClick={() => act('mark-complete')} className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+          <button disabled={busy} onClick={() => act('mark-complete')} className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600">
             Mark Job Done
           </button>
         )}
         {['paid', 'provider_accepted', 'in_progress', 'provider_marked_complete', 'completed'].includes(job.status) && (
-          <button onClick={() => setShowDispute((s) => !s)} className="rounded-full border border-ink-900/15 px-5 py-2 text-sm font-semibold hover:bg-ink-900/5">
+          <button onClick={() => setShowDispute((s) => !s)} className="rounded-full border border-navy-900/15 px-5 py-2 text-sm font-semibold hover:bg-navy-900/5">
             Report a Problem
           </button>
         )}
@@ -79,7 +79,7 @@ export default function ProviderJobDetailPage() {
       {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} redirectTo="/provider/jobs" />}
 
       {job.status === 'provider_marked_complete' && (
-        <p className="text-sm text-ink-700/60">Waiting for the customer to confirm completion — your payout releases automatically once they do.</p>
+        <p className="text-sm text-navy-700/60">Waiting for the customer to confirm completion — your payout releases automatically once they do.</p>
       )}
       {job.status === 'completed' && (
         <p className="text-sm text-emerald-700">Job completed and payout processed (or pending your Stripe Connect setup).</p>

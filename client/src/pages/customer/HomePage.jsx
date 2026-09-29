@@ -79,9 +79,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10">
-      <section className="rounded-3xl bg-gradient-to-br from-ember-500 to-ember-700 px-6 py-12 text-center text-white shadow-pop">
+      <section className="rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 px-6 py-12 text-center text-white shadow-pop">
         <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2">Find someone who can do this.</h1>
-        <p className="text-ember-50/90 mb-6">
+        <p className="text-white/90 mb-6">
           {locked
             ? `Searching near ${location?.label || 'your location'}. Tell Taskora what you need and we'll find the right local pro.`
             : 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
@@ -91,9 +91,9 @@ export default function HomePage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="What do you need help with?"
-            className="flex-1 px-5 py-4 text-ink-900 outline-none text-base"
+            className="flex-1 px-5 py-4 text-navy-900 outline-none text-base"
           />
-          <button disabled={loading} className="bg-ink-900 px-6 font-semibold text-white hover:bg-ink-800 transition">
+          <button disabled={loading} className="bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 transition">
             {loading ? <Spinner size={18} /> : 'Search'}
           </button>
         </form>
@@ -117,7 +117,7 @@ export default function HomePage() {
       <section>
         <div className="flex items-center justify-between mb-3 gap-3">
           <h2 className="font-display text-2xl">Browse services</h2>
-          <Link to="/services" className="text-sm font-medium text-ember-600 hover:text-ember-700 whitespace-nowrap">
+          <Link to="/services" className="text-sm font-medium text-accent-600 hover:text-accent-700 whitespace-nowrap">
             See all services →
           </Link>
         </div>
@@ -125,7 +125,7 @@ export default function HomePage() {
           value={categoryQuery}
           onChange={(e) => setCategoryQuery(e.target.value)}
           placeholder="Search services (e.g. locksmith, house cleaning, tutoring)"
-          className="mb-5 w-full max-w-md rounded-full border border-ink-900/15 px-4 py-2.5 text-sm outline-none focus:border-ember-400"
+          className="mb-5 w-full max-w-md rounded-full border border-navy-900/15 px-4 py-2.5 text-sm outline-none focus:border-accent-400"
         />
 
         {/* No search typed: the home page shows ONLY the top-6 featured
@@ -139,7 +139,7 @@ export default function HomePage() {
             <div className="flex justify-center py-8"><Spinner size={24} /></div>
           ) : (
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-700/50 mb-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-navy-700/50 mb-3">
                 {featuredIsDemandDriven && location?.city ? `Trending in ${location.city}` : 'Popular right now'}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
@@ -171,7 +171,7 @@ export default function HomePage() {
               </div>
             ))}
             {groups.length > 0 && filteredGroups.length === 0 && (
-              <p className="text-sm text-ink-700/60">No services match "{categoryQuery}". Try a broader term, or use the search bar above.</p>
+              <p className="text-sm text-navy-700/60">No services match "{categoryQuery}". Try a broader term, or use the search bar above.</p>
             )}
           </div>
         )}

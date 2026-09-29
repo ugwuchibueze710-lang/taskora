@@ -36,11 +36,11 @@ export default function NotificationsPage() {
           <button
             key={n.id}
             onClick={() => handleClick(n)}
-            className={`block w-full rounded-xl border p-4 text-left ${n.read_at ? 'border-ink-900/8 bg-white' : 'border-ember-200 bg-ember-50'}`}
+            className={`block w-full rounded-xl border p-4 text-left ${n.read_at ? 'border-navy-900/8 bg-white' : 'border-accent-200 bg-accent-50'}`}
           >
             <p className="font-medium">{n.title}</p>
-            {n.body && <p className="text-sm text-ink-700/70 mt-0.5">{n.body}</p>}
-            <p className="text-xs text-ink-700/40 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+            {n.body && <p className="text-sm text-navy-700/70 mt-0.5">{n.body}</p>}
+            <p className="text-xs text-navy-700/40 mt-1">{new Date(n.created_at).toLocaleString()}</p>
           </button>
         ))}
       </div>

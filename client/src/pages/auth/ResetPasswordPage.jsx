@@ -46,10 +46,10 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#fbf6f1] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-display text-4xl text-ember-600">Taskora</h1>
-          <p className="text-ink-700/70 mt-1">Set a new password</p>
+          <h1 className="font-display text-4xl text-primary-600">Taskora</h1>
+          <p className="text-navy-700/70 mt-1">Set a new password</p>
         </div>
-        <form onSubmit={submit} className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card space-y-3">
+        <form onSubmit={submit} className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card space-y-3">
           <h2 className="font-display text-xl mb-1">Choose a new password</h2>
           <input
             required
@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
             placeholder="New password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+            className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
           />
           <input
             required
@@ -65,12 +65,12 @@ export default function ResetPasswordPage() {
             placeholder="Confirm new password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+            className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             disabled={loading}
-            className="w-full rounded-lg bg-ember-500 py-2.5 font-semibold text-white hover:bg-ember-600 disabled:opacity-60 transition"
+            className="w-full rounded-lg bg-accent-500 py-2.5 font-semibold text-white hover:bg-accent-600 disabled:opacity-60 transition"
           >
             {loading ? 'Saving…' : 'Save new password'}
           </button>

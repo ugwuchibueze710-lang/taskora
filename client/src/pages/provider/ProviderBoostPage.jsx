@@ -30,14 +30,14 @@ export default function ProviderBoostPage() {
   return (
     <div className="max-w-md space-y-4">
       <h1 className="font-display text-2xl">Taskora Boost</h1>
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card text-center">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card text-center">
         <div className="text-4xl mb-2">🚀</div>
-        <p className="font-display text-3xl">$100<span className="text-base text-ink-700/60">/mo</span></p>
-        <p className="text-sm text-ink-700/70 mt-2">Extra visibility in search results, clearly labeled as "Sponsored" — never disguised as an organic match.</p>
+        <p className="font-display text-3xl">$100<span className="text-base text-navy-700/60">/mo</span></p>
+        <p className="text-sm text-navy-700/70 mt-2">Extra visibility in search results, clearly labeled as "Sponsored" — never disguised as an organic match.</p>
         {active ? (
           <p className="mt-4 rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-700">Boost is active!</p>
         ) : (
-          <button disabled={busy} onClick={subscribe} className="mt-4 w-full rounded-full bg-ember-500 py-2.5 font-semibold text-white hover:bg-ember-600 disabled:opacity-60">
+          <button disabled={busy} onClick={subscribe} className="mt-4 w-full rounded-full bg-accent-500 py-2.5 font-semibold text-white hover:bg-accent-600 disabled:opacity-60">
             {busy ? 'Redirecting…' : 'Start Boosting'}
           </button>
         )}

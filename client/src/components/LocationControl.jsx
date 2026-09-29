@@ -65,46 +65,46 @@ export default function LocationControl() {
     <div className="relative" ref={boxRef}>
       <button
         onClick={() => (locked ? handleUnlock() : setOpen((o) => !o))}
-        className="flex items-center gap-1.5 rounded-full border border-ink-900/10 bg-white px-3 py-1.5 text-sm font-medium text-ink-800 shadow-sm hover:border-ember-300 transition-colors"
+        className="flex items-center gap-1.5 rounded-full border border-navy-900/10 bg-white px-3 py-1.5 text-sm font-medium text-navy-800 shadow-sm hover:border-accent-300 transition-colors"
       >
         <span className={justLocked ? 'animate-lockSnap inline-block' : 'inline-block'}>{locked ? '🔒' : '📍'}</span>
         <span className="max-w-[9rem] truncate">{location?.label || 'Set your location'}</span>
-        {!locked && <span className="text-ink-700/40">▾</span>}
+        {!locked && <span className="text-navy-700/40">▾</span>}
       </button>
 
       {open && !locked && (
-        <div className="absolute z-30 mt-2 w-72 rounded-xl border border-ink-900/10 bg-white p-2 shadow-pop animate-slideDown">
+        <div className="absolute z-30 mt-2 w-72 rounded-xl border border-navy-900/10 bg-white p-2 shadow-pop animate-slideDown">
           <button
             type="button"
             onClick={handleUseMyLocation}
             disabled={locating}
-            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ember-600 hover:bg-ember-50 disabled:opacity-60"
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-accent-600 hover:bg-accent-50 disabled:opacity-60"
           >
             <span>{locating ? '⏳' : '🧭'}</span>
             {locating ? 'Finding your location…' : 'Use my current location'}
           </button>
           {locateError && <p className="mb-1 px-3 text-xs text-red-600">{locateError}</p>}
-          <div className="mb-1 border-t border-ink-900/8" />
+          <div className="mb-1 border-t border-navy-900/8" />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search city, ZIP, or address"
-            className="w-full rounded-lg border border-ink-900/10 px-3 py-2 text-sm outline-none focus:border-ember-400"
+            className="w-full rounded-lg border border-navy-900/10 px-3 py-2 text-sm outline-none focus:border-accent-400"
           />
           <div className="mt-1 max-h-64 overflow-y-auto scrollbar-thin">
             {results.map((r, i) => (
               <button
                 key={i}
                 onClick={() => handlePick(r)}
-                className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-ember-50"
+                className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent-50"
               >
                 <span className="mt-0.5">📍</span>
                 <span>{r.label}</span>
               </button>
             ))}
             {query.trim().length >= 2 && results.length === 0 && (
-              <p className="px-3 py-2 text-sm text-ink-700/60">No matches yet — keep typing.</p>
+              <p className="px-3 py-2 text-sm text-navy-700/60">No matches yet — keep typing.</p>
             )}
           </div>
         </div>

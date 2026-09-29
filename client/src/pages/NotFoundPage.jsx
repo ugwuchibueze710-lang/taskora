@@ -8,13 +8,13 @@ export default function NotFoundPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#fbf6f1] px-6 text-center">
       <div className="text-5xl mb-4">🧭</div>
-      <h1 className="font-display text-2xl text-ink-900 mb-1">Page not found</h1>
-      <p className="text-ink-700/70 max-w-sm mb-5">
+      <h1 className="font-display text-2xl text-navy-900 mb-1">Page not found</h1>
+      <p className="text-navy-700/70 max-w-sm mb-5">
         The page you're looking for doesn't exist, or the link is out of date.
       </p>
       <Link
         to="/"
-        className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+        className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600"
       >
         Back to Taskora
       </Link>

@@ -68,12 +68,12 @@ export default function ProviderAvailabilityPage() {
     <div className="max-w-lg space-y-6">
       <h1 className="font-display text-2xl">Availability & Service Area</h1>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <div className="flex gap-2 mb-3">
-          <button onClick={() => setMode('always')} className={`rounded-full px-4 py-1.5 text-sm border ${mode === 'always' ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+          <button onClick={() => setMode('always')} className={`rounded-full px-4 py-1.5 text-sm border ${mode === 'always' ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
             Available All the Time
           </button>
-          <button onClick={() => setMode('custom')} className={`rounded-full px-4 py-1.5 text-sm border ${mode === 'custom' ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+          <button onClick={() => setMode('custom')} className={`rounded-full px-4 py-1.5 text-sm border ${mode === 'custom' ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
             Set My Availability
           </button>
         </div>
@@ -83,14 +83,14 @@ export default function ProviderAvailabilityPage() {
               const slot = slots.find((s) => s.dayOfWeek === i);
               return (
                 <div key={i} className="flex items-center gap-2">
-                  <button onClick={() => toggleDay(i)} className={`w-28 rounded-lg border px-2 py-1.5 text-sm text-left ${slot ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+                  <button onClick={() => toggleDay(i)} className={`w-28 rounded-lg border px-2 py-1.5 text-sm text-left ${slot ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
                     {d}
                   </button>
                   {slot && (
                     <>
-                      <input type="time" value={slot.startTime} onChange={(e) => updateSlotTime(i, 'startTime', e.target.value)} className="rounded-lg border border-ink-900/15 px-2 py-1 text-sm" />
+                      <input type="time" value={slot.startTime} onChange={(e) => updateSlotTime(i, 'startTime', e.target.value)} className="rounded-lg border border-navy-900/15 px-2 py-1 text-sm" />
                       <span>–</span>
-                      <input type="time" value={slot.endTime} onChange={(e) => updateSlotTime(i, 'endTime', e.target.value)} className="rounded-lg border border-ink-900/15 px-2 py-1 text-sm" />
+                      <input type="time" value={slot.endTime} onChange={(e) => updateSlotTime(i, 'endTime', e.target.value)} className="rounded-lg border border-navy-900/15 px-2 py-1 text-sm" />
                     </>
                   )}
                 </div>
@@ -100,23 +100,23 @@ export default function ProviderAvailabilityPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-3">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card space-y-3">
         <h2 className="font-medium mb-2">Service area</h2>
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-700/70">Base location</label>
+          <label className="mb-1 block text-xs font-medium text-navy-700/70">Base location</label>
           <ProviderLocationPicker value={areaLocation} onChange={setAreaLocation} placeholder="Search city, ZIP, or address" />
         </div>
         <div className="flex gap-2 items-center">
           {[5, 10, 25].map((r) => (
-            <button key={r} onClick={() => setRadiusMiles(r)} className={`rounded-full px-4 py-1.5 text-sm border ${radiusMiles === r ? 'border-ember-500 bg-ember-50' : 'border-ink-900/10'}`}>
+            <button key={r} onClick={() => setRadiusMiles(r)} className={`rounded-full px-4 py-1.5 text-sm border ${radiusMiles === r ? 'border-accent-500 bg-accent-50' : 'border-navy-900/10'}`}>
               {r} mi
             </button>
           ))}
-          <input type="number" min="1" value={radiusMiles} onChange={(e) => setRadiusMiles(Number(e.target.value))} className="w-20 rounded-full border border-ink-900/15 px-3 py-1.5 text-sm" />
+          <input type="number" min="1" value={radiusMiles} onChange={(e) => setRadiusMiles(Number(e.target.value))} className="w-20 rounded-full border border-navy-900/15 px-3 py-1.5 text-sm" />
         </div>
       </div>
 
-      <button onClick={save} className="rounded-full bg-ember-500 px-6 py-2 text-sm font-semibold text-white hover:bg-ember-600">Save</button>
+      <button onClick={save} className="rounded-full bg-accent-500 px-6 py-2 text-sm font-semibold text-white hover:bg-accent-600">Save</button>
       {saved && <span className="ml-2 text-sm text-emerald-600">{saved}</span>}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>

@@ -82,10 +82,10 @@ export default function JobDetailPage() {
         <StatusBadge status={job.status} />
       </div>
 
-      <div className="rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card space-y-2">
-        <p className="text-ink-700/80">{job.service_description}</p>
-        {job.scheduled_date && <p className="text-sm text-ink-700/60">Scheduled: {new Date(job.scheduled_date).toLocaleDateString()}</p>}
-        <div className="pt-2 border-t border-ink-900/8 text-sm space-y-1">
+      <div className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card space-y-2">
+        <p className="text-navy-700/80">{job.service_description}</p>
+        {job.scheduled_date && <p className="text-sm text-navy-700/60">Scheduled: {new Date(job.scheduled_date).toLocaleDateString()}</p>}
+        <div className="pt-2 border-t border-navy-900/8 text-sm space-y-1">
           <div className="flex justify-between font-semibold"><span>Total you pay</span><span>${Number(job.price).toFixed(2)}</span></div>
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function JobDetailPage() {
 
       <div className="flex flex-wrap gap-2">
         {canPay && (
-          <button disabled={busy} onClick={pay} className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60">
+          <button disabled={busy} onClick={pay} className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60">
             {busy ? 'Redirecting…' : `Pay $${Number(job.price).toFixed(2)} to confirm`}
           </button>
         )}
@@ -109,7 +109,7 @@ export default function JobDetailPage() {
           </button>
         )}
         {canDispute && (
-          <button onClick={() => setShowDispute((s) => !s)} className="rounded-full border border-ink-900/15 px-5 py-2 text-sm font-semibold hover:bg-ink-900/5">
+          <button onClick={() => setShowDispute((s) => !s)} className="rounded-full border border-navy-900/15 px-5 py-2 text-sm font-semibold hover:bg-navy-900/5">
             Report a Problem
           </button>
         )}
@@ -118,8 +118,8 @@ export default function JobDetailPage() {
       {showDispute && <DisputeForm jobId={id} onDone={() => setShowDispute(false)} redirectTo="/jobs" />}
 
       {invoice && (
-        <a href={invoice.pdf_path} target="_blank" rel="noreferrer" className="block rounded-xl border border-ink-900/10 bg-white p-4 text-sm hover:border-ember-300">
-          📄 Invoice {invoice.invoice_number} — <span className="text-ember-600 font-medium">Download PDF</span>
+        <a href={invoice.pdf_path} target="_blank" rel="noreferrer" className="block rounded-xl border border-navy-900/10 bg-white p-4 text-sm hover:border-accent-300">
+          📄 Invoice {invoice.invoice_number} — <span className="text-accent-600 font-medium">Download PDF</span>
         </a>
       )}
 

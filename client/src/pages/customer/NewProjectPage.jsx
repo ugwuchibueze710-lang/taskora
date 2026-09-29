@@ -57,7 +57,7 @@ export default function NewProjectPage() {
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="font-display text-2xl mb-1">Get quotes fast</h1>
-      <p className="text-sm text-ink-700/60 mb-5">
+      <p className="text-sm text-navy-700/60 mb-5">
         Describe your project once and we'll notify several matching providers near you right away — their quotes
         come back to one place so you can compare and pick.
       </p>
@@ -68,16 +68,16 @@ export default function NewProjectPage() {
         </p>
       )}
 
-      <form onSubmit={submit} className="space-y-4 rounded-2xl border border-ink-900/8 bg-white p-5 shadow-card">
+      <form onSubmit={submit} className="space-y-4 rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <div>
-          <label className="mb-1 block text-sm font-medium text-ink-800">What kind of service?</label>
+          <label className="mb-1 block text-sm font-medium text-navy-800">What kind of service?</label>
           {loadingCategories ? (
             <Spinner size={18} />
           ) : (
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+              className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
             >
               <option value="">Not sure / other</option>
               {categories.map((c) => (
@@ -90,14 +90,14 @@ export default function NewProjectPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-ink-800">Describe what you need done</label>
+          <label className="mb-1 block text-sm font-medium text-navy-800">Describe what you need done</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
             maxLength={2000}
             placeholder="e.g. Locked out of my apartment, need someone within the hour…"
-            className="w-full rounded-lg border border-ink-900/15 px-3 py-2 text-sm outline-none focus:border-ember-400"
+            className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
           />
         </div>
 
@@ -105,7 +105,7 @@ export default function NewProjectPage() {
 
         <button
           disabled={submitting || !location}
-          className="w-full rounded-full bg-ember-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60"
+          className="w-full rounded-full bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60"
         >
           {submitting ? 'Sending to matching providers…' : 'Send to matching providers'}
         </button>

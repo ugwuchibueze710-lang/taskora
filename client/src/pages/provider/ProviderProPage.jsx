@@ -35,7 +35,7 @@ export default function ProviderProPage() {
   return (
     <div className="max-w-2xl space-y-4">
       <h1 className="font-display text-2xl">Taskora Pro</h1>
-      <p className="text-sm text-ink-700/70">
+      <p className="text-sm text-navy-700/70">
         Pro gives your profile priority placement above non-priority providers in relevant searches — it doesn't override
         relevance or let a lower rating beat a higher-rated Pro provider; among Pro members, the best-rated match still
         wins the top spot.
@@ -53,19 +53,19 @@ export default function ProviderProPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {PLANS.map((plan) => (
-            <div key={plan.interval} className="rounded-2xl border border-ink-900/8 bg-white p-6 shadow-card text-center flex flex-col">
+            <div key={plan.interval} className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card text-center flex flex-col">
               <div className="text-4xl mb-2">⭐</div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-ink-700/50">{plan.label}</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-navy-700/50">{plan.label}</p>
               <p className="font-display text-3xl mt-1">
                 {plan.price}
-                <span className="text-base text-ink-700/60">{plan.suffix}</span>
+                <span className="text-base text-navy-700/60">{plan.suffix}</span>
               </p>
               {plan.badge && (
                 <span className="mt-1 inline-block self-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                   {plan.badge}
                 </span>
               )}
-              <ul className="mt-4 space-y-1.5 text-sm text-ink-700/80 text-left flex-1">
+              <ul className="mt-4 space-y-1.5 text-sm text-navy-700/80 text-left flex-1">
                 <li>✓ Priority placement over non-priority providers</li>
                 <li>✓ Pro badge on your profile</li>
                 <li>✓ Provider analytics</li>
@@ -74,7 +74,7 @@ export default function ProviderProPage() {
               <button
                 disabled={busyInterval !== null}
                 onClick={() => subscribe(plan.interval)}
-                className="mt-4 w-full rounded-full bg-ink-900 py-2.5 font-semibold text-white hover:bg-ink-800 disabled:opacity-60"
+                className="mt-4 w-full rounded-full bg-navy-900 py-2.5 font-semibold text-white hover:bg-navy-800 disabled:opacity-60"
               >
                 {busyInterval === plan.interval ? 'Redirecting…' : `Choose ${plan.label}`}
               </button>
@@ -83,7 +83,7 @@ export default function ProviderProPage() {
         </div>
       )}
       {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-      <p className="text-xs text-ink-700/50 text-center">
+      <p className="text-xs text-navy-700/50 text-center">
         Subscribing is entirely optional — your account, profile, and services stay active whether or not you subscribe.
       </p>
     </div>

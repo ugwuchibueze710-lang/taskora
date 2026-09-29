@@ -37,10 +37,10 @@ export default function ProviderJobsPage() {
       {reportedNotice}
       <div className="space-y-2">
         {jobs.map((j) => (
-          <Link key={j.id} to={`/provider/jobs/${j.id}`} className="flex items-center justify-between rounded-xl border border-ink-900/8 bg-white p-4 shadow-card hover:border-ember-300">
+          <Link key={j.id} to={`/provider/jobs/${j.id}`} className="flex items-center justify-between rounded-xl border border-navy-900/8 bg-white p-4 shadow-card hover:border-accent-300">
             <div>
               <p className="font-medium">{j.customer_first_name} {j.customer_last_name}</p>
-              <p className="text-sm text-ink-700/60">{j.service_description}</p>
+              <p className="text-sm text-navy-700/60">{j.service_description}</p>
             </div>
             <div className="text-right">
               <p className="font-display text-lg">${j.provider_amount}</p>

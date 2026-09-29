@@ -21,6 +21,38 @@ export default {
           800: '#2a221d',
           700: '#3c322b',
         },
+        // Added for the "Dusty Blue + Peach" redesign (customer + provider
+        // pages only -- the admin panel keeps using ember/ink untouched, since
+        // it never references these new tokens, so it is unaffected).
+        primary: {
+          50: '#eef2f6',
+          100: '#dbe4ec',
+          200: '#b7c9d9',
+          300: '#93aec7',
+          400: '#7897b5',
+          500: '#5e7fa3',
+          600: '#4c6a8c',
+          700: '#3d5570',
+          800: '#2f4257',
+          900: '#24333f',
+        },
+        accent: {
+          50: '#fef6f2',
+          100: '#fce8de',
+          200: '#f8d2c0',
+          300: '#f2b8a0',
+          400: '#ec9d80',
+          500: '#e37f5c',
+          600: '#c9643f',
+          700: '#a44f32',
+          800: '#7f3e28',
+          900: '#603022',
+        },
+        navy: {
+          900: '#1c2733',
+          800: '#28374a',
+          700: '#37485d',
+        },
       },
       fontFamily: {
         display: ['"Fraunces"', 'Georgia', 'serif'],

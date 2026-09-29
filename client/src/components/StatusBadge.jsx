@@ -1,6 +1,6 @@
 const STYLES = {
-  quote_requested: 'bg-ink-900/5 text-ink-700',
-  quote_sent: 'bg-ink-900/5 text-ink-700',
+  quote_requested: 'bg-navy-900/5 text-navy-700',
+  quote_sent: 'bg-navy-900/5 text-navy-700',
   quote_accepted: 'bg-amber-100 text-amber-700',
   payment_pending: 'bg-amber-100 text-amber-700',
   paid: 'bg-blue-100 text-blue-700',
@@ -9,9 +9,9 @@ const STYLES = {
   provider_marked_complete: 'bg-purple-100 text-purple-700',
   customer_confirmed: 'bg-emerald-100 text-emerald-700',
   completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-ink-900/10 text-ink-700/60',
+  cancelled: 'bg-navy-900/10 text-navy-700/60',
   disputed: 'bg-red-100 text-red-700',
-  refunded: 'bg-ink-900/10 text-ink-700/60',
+  refunded: 'bg-navy-900/10 text-navy-700/60',
 };
 
 const LABELS = {
@@ -32,7 +32,7 @@ const LABELS = {
 
 export default function StatusBadge({ status }) {
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STYLES[status] || 'bg-ink-900/5 text-ink-700'}`}>
+    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STYLES[status] || 'bg-navy-900/5 text-navy-700'}`}>
       {LABELS[status] || status}
     </span>
   );
