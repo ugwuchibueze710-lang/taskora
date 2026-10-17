@@ -1,0 +1,11 @@
+-- One-time promotion: taskora@admin1.com signed up normally through
+-- Supabase Auth (the normal /signup flow), per explicit owner request, to
+-- become the account's new admin login -- the old admin@taskora.com /
+-- owner@taskora-admin.internal accounts from migrations 006/009/010/012
+-- predate the Supabase Auth switch in 014 and have no linked Supabase
+-- identity, so they can no longer sign in through the current login form
+-- at all. This grants the same role = 'admin' flag every other admin
+-- account has (see middleware/auth.js's role === 'admin' gate and
+-- admin.routes.js), which is everything the admin panel checks -- nothing
+-- else about the account is touched.
+UPDATE users SET role = 'admin', updated_at = now() WHERE email = 'taskora@admin1.com';
