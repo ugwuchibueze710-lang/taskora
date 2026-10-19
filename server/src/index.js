@@ -33,6 +33,8 @@ import disputeRoutes from './routes/dispute.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import agencyRoutes from './routes/agency.routes.js';
+import usersRoutes from './routes/users.routes.js';
+import siteSettingsRoutes from './routes/site-settings.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -114,6 +116,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/providers', providerRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/site-settings', siteSettingsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/location', locationRoutes);

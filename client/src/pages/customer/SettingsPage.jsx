@@ -4,7 +4,7 @@ import SafeImage from '../../components/SafeImage.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function SettingsPage() {
-  const { user, setUser, refresh } = useAuth();
+  const { user, setUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [defaultMessage, setDefaultMessage] = useState('');
   const [saved, setSaved] = useState('');
@@ -24,11 +24,19 @@ export default function SettingsPage() {
     form.append('avatar', file);
     const { data } = await api.post('/profile/avatar', form);
     setProfile((p) => ({ ...p, avatar_url: data.avatarUrl }));
+    // Settings only ever updated its own local `profile` state before --
+    // the nav avatar reads AuthContext, not this, so it kept showing the
+    // old picture until the next full session refresh. Your profile wall
+    // (Profile in the menu) is the primary, animated place to change this
+    // now, but this older control still needs to keep the rest of the app
+    // in sync when it's used.
+    setUser((u) => (u ? { ...u, avatar_url: data.avatarUrl } : u));
   };
 
   const removeAvatar = async () => {
     await api.delete('/profile/avatar');
     setProfile((p) => ({ ...p, avatar_url: null }));
+    setUser((u) => (u ? { ...u, avatar_url: null } : u));
   };
 
   const saveSettings = async () => {

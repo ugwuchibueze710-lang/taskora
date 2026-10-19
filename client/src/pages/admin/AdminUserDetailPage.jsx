@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
 import ProviderLocationPicker from '../../components/ProviderLocationPicker.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 // The full, dedicated "click into one account" page -- everything about a
 // user or provider in one place, nothing truncated or hidden behind a
@@ -668,6 +669,7 @@ function PayoutHistoryTable({ payouts }) {
 export default function AdminUserDetailPage() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [detail, setDetail] = useState(null);
   const [support, setSupport] = useState(null);
   const [reply, setReply] = useState('');
@@ -708,10 +710,33 @@ export default function AdminUserDetailPage() {
 
   const promote = async () => {
     if (!detail) return;
-    if (!confirm(`Make ${detail.user.first_name} ${detail.user.last_name} (${detail.user.email}) an admin? They'll get full, equal admin access.`)) return;
+    if (!confirm(`Make ${detail.user.first_name} ${detail.user.last_name} (${detail.user.email}) a basic (level 1) admin?`)) return;
     setActionBusy(true);
     try {
       await api.post(`/admin/users/${userId}/promote`);
+      await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const demote = async () => {
+    if (!detail) return;
+    if (!confirm(`Remove admin access from ${detail.user.first_name} ${detail.user.last_name}?`)) return;
+    setActionBusy(true);
+    try {
+      await api.post(`/admin/users/${userId}/demote`);
+      await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const setAdminLevel = async (level) => {
+    if (!detail) return;
+    setActionBusy(true);
+    try {
+      await api.post(`/admin/users/${userId}/admin-level`, { level });
       await loadDetail();
     } finally {
       setActionBusy(false);
@@ -727,6 +752,11 @@ export default function AdminUserDetailPage() {
 
   if (!detail) return <p className="text-sm text-ink-700/60">Loading…</p>;
   const { user, provider, profile, earnings, jobsAsCustomer, jobsAsProvider } = detail;
+  // "Full control" (level 2): exclusively can grant/revoke admin status and
+  // level-2 status itself -- a level-1 ("basic") admin sees none of these
+  // controls at all, the backend enforces the same restriction either way.
+  const isLevel2 = currentUser?.admin_level === 2;
+  const isSelf = currentUser?.id === user.id;
 
   return (
     <div className="space-y-5">
@@ -737,7 +767,7 @@ export default function AdminUserDetailPage() {
           <h1 className="font-display text-xl">{user.first_name} {user.last_name}</h1>
           <p className="text-xs text-ink-700/60 mt-0.5">{user.email}</p>
           <p className="text-xs text-ink-700/60 mt-1">
-            {user.role} · {user.status} · mode: {user.current_mode} · joined {new Date(user.created_at).toLocaleDateString()}
+            {user.role}{user.role === 'admin' && user.admin_level ? ` (L${user.admin_level})` : ''} · {user.status} · mode: {user.current_mode} · joined {new Date(user.created_at).toLocaleDateString()}
             {user.location_label && ` · 📍 ${user.location_label}`}
           </p>
         </div>
@@ -747,10 +777,29 @@ export default function AdminUserDetailPage() {
           ) : user.status === 'suspended' ? (
             <button disabled={actionBusy} onClick={() => act('reactivate')} className="rounded-full border border-emerald-200 px-3 py-1 text-xs text-emerald-600 hover:bg-emerald-50 disabled:opacity-50">Reactivate</button>
           ) : null}
-          {user.role !== 'admin' && (
+          {/* Granting/revoking admin, and changing an existing admin's
+              level, is level-2 ("full control") only -- a level-1 admin
+              never sees any of these, not just a disabled version. */}
+          {isLevel2 && user.role !== 'admin' && (
             <button disabled={actionBusy} onClick={promote} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-50">Make admin</button>
           )}
-          {user.status !== 'deleted' && user.role !== 'admin' && (
+          {isLevel2 && user.role === 'admin' && !isSelf && (
+            <>
+              {user.admin_level === 2 ? (
+                <button disabled={actionBusy} onClick={() => setAdminLevel(1)} className="rounded-full border border-ink-900/15 px-3 py-1 text-xs hover:bg-ink-900/5 disabled:opacity-50">
+                  Set Level 1
+                </button>
+              ) : (
+                <button disabled={actionBusy} onClick={() => setAdminLevel(2)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-50">
+                  Set Level 2
+                </button>
+              )}
+              <button disabled={actionBusy} onClick={demote} className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">
+                Remove admin
+              </button>
+            </>
+          )}
+          {isLevel2 && user.status !== 'deleted' && user.role !== 'admin' && (
             <button disabled={actionBusy} onClick={remove} className="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">Delete</button>
           )}
         </div>

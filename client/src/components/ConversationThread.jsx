@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCall } from '../context/CallContext.jsx';
@@ -60,7 +61,10 @@ export default function ConversationThread({ conversationId }) {
     <div className="flex flex-col h-[calc(100vh-160px)] rounded-2xl border border-navy-900/8 bg-white shadow-card overflow-hidden">
       {other && (
         <div className="flex items-center justify-between border-b border-navy-900/8 px-4 py-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          {/* The other participant's name/photo is a link to their profile
+              -- their storefront if they're a provider, their wall
+              otherwise (ProfileWallPage resolves which, via their provider_id). */}
+          <Link to={`/u/${other.userId}`} className="flex items-center gap-2.5 min-w-0 hover:opacity-80">
             {other.avatarUrl ? (
               <img src={other.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
             ) : (
@@ -69,7 +73,7 @@ export default function ConversationThread({ conversationId }) {
               </div>
             )}
             <span className="truncate font-medium text-navy-900">{other.name}</span>
-          </div>
+          </Link>
           <button
             onClick={() => startCall(conversationId, other.name)}
             disabled={callState !== 'idle'}

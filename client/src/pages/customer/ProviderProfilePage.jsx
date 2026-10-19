@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/client.js';
 import StarRating from '../../components/StarRating.jsx';
 import Spinner from '../../components/Spinner.jsx';
@@ -72,26 +72,35 @@ export default function ProviderProfilePage() {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card">
-        <div className="flex gap-5">
-          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-accent-100 flex items-center justify-center text-3xl font-display text-accent-600">
+        {/* Name above the picture, Facebook-wall style -- confirmed with
+            the user this is a stacked layout, not the old side-by-side
+            avatar+name. isOwnProfile gets a direct edit entry point right
+            here instead of making you go hunt for Provider Settings. */}
+        <div className="flex flex-col items-center text-center">
+          <h1 className="font-display text-2xl flex flex-wrap items-center justify-center gap-2">
+            {provider.business_name || provider.display_name}
+            {provider.is_pro && <span className="rounded-full bg-navy-900 px-2 py-0.5 text-xs font-bold text-white">PRO</span>}
+            {provider.is_boosted && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Sponsored</span>}
+            {provider.verified && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">Verified</span>}
+          </h1>
+          <div className="mt-3 h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-accent-100 flex items-center justify-center text-3xl font-display text-accent-600">
             <SafeImage src={provider.image_url} className="h-full w-full object-cover" fallback={provider.first_name[0]} />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-2xl">{provider.business_name || provider.display_name}</h1>
-              {provider.is_pro && <span className="rounded-full bg-navy-900 px-2 py-0.5 text-xs font-bold text-white">PRO</span>}
-              {provider.is_boosted && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">Sponsored</span>}
-              {provider.verified && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">Verified</span>}
-            </div>
-            <div className="mt-1 flex items-center gap-3 text-sm">
-              <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
-              {distanceMiles != null && <span className="text-navy-700/60">{distanceMiles} mi away</span>}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {categories.map((c) => (
-                <span key={c.id} className="rounded-full bg-accent-50 px-2.5 py-0.5 text-xs text-accent-700">{c.icon} {c.name}</span>
-              ))}
-            </div>
+          {isOwnProfile && (
+            <Link to="/provider/settings" className="mt-2 text-sm font-medium text-accent-600 hover:text-accent-700">
+              Edit profile
+            </Link>
+          )}
+        </div>
+        <div className="mt-4 flex flex-col items-center gap-2 text-center">
+          <div className="flex items-center gap-3 text-sm">
+            <StarRating rating={Number(provider.rating_avg)} count={provider.rating_count} />
+            {distanceMiles != null && <span className="text-navy-700/60">{distanceMiles} mi away</span>}
+          </div>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {categories.map((c) => (
+              <span key={c.id} className="rounded-full bg-accent-50 px-2.5 py-0.5 text-xs text-accent-700">{c.icon} {c.name}</span>
+            ))}
           </div>
         </div>
 

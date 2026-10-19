@@ -15,7 +15,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { rows } = await query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.current_mode, u.created_at,
-              p.avatar_url, p.location_label, p.location_lat, p.location_lng,
+              p.avatar_url, p.bio, p.location_label, p.location_lat, p.location_lng,
               s.default_approach_message, s.email_notifications, s.push_notifications,
               pr.id AS provider_id, pr.status AS provider_status
          FROM users u
@@ -32,6 +32,12 @@ router.get(
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(80).optional(),
   lastName: z.string().trim().min(1).max(80).optional(),
+  // Empty string is a deliberate "clear the bio" -- distinct from omitting
+  // the field entirely (COALESCE below leaves it untouched either way,
+  // since both still pass this schema as a defined string); the client
+  // always sends the full current text on save, never a partial patch, so
+  // there is no real ambiguity in practice.
+  bio: z.string().trim().max(500, 'Bio must be 500 characters or fewer.').optional(),
 });
 
 router.patch(
@@ -39,12 +45,15 @@ router.patch(
   requireAuth,
   validateBody(updateSchema),
   asyncHandler(async (req, res) => {
-    const { firstName, lastName } = req.body;
+    const { firstName, lastName, bio } = req.body;
     const { rows } = await query(
       `UPDATE users SET first_name = COALESCE($1, first_name), last_name = COALESCE($2, last_name), updated_at = now()
        WHERE id = $3 RETURNING id, first_name, last_name, email`,
       [firstName, lastName, req.user.id]
     );
+    if (bio !== undefined) {
+      await query(`UPDATE profiles SET bio = $1, updated_at = now() WHERE user_id = $2`, [bio || null, req.user.id]);
+    }
     res.json({ user: rows[0] });
   })
 );

@@ -15,8 +15,18 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [featured, setFeatured] = useState([]);
   const [featuredIsDemandDriven, setFeaturedIsDemandDriven] = useState(false);
+  const [featuredIsAdminPinned, setFeaturedIsAdminPinned] = useState(false);
+  const [siteSettings, setSiteSettings] = useState({});
   const { locked, location } = useTaskoraLocation();
   const navigate = useNavigate();
+
+  // Level-2-admin-controlled homepage content (Site Settings panel) --
+  // hero headline/subtitle overrides, an optional announcement banner, and
+  // a manual featured-categories pin. Missing keys just mean "nothing set
+  // yet", so every use below falls back to this page's own original copy.
+  useEffect(() => {
+    api.get('/site-settings').then(({ data }) => setSiteSettings(data.settings || {})).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (user.current_mode === 'provider') return;
@@ -35,6 +45,7 @@ export default function HomePage() {
       .then(({ data }) => {
         setFeatured(data.categories);
         setFeaturedIsDemandDriven(data.isDemandDriven);
+        setFeaturedIsAdminPinned(!!data.isAdminPinned);
       })
       .catch(() => {});
   }, [user.current_mode, location?.city]);
@@ -79,12 +90,20 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10">
+      {siteSettings.banner_enabled && siteSettings.banner_message && (
+        <div className="rounded-xl bg-navy-900 px-4 py-2.5 text-center text-sm font-medium text-white">
+          {siteSettings.banner_message}
+        </div>
+      )}
+
       <section className="rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 px-6 py-12 text-center text-white shadow-pop">
-        <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2">Find someone who can do this.</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2">
+          {siteSettings.hero_title || 'Find someone who can do this.'}
+        </h1>
         <p className="text-white/90 mb-6">
           {locked
             ? `Searching near ${location?.label || 'your location'}. Tell Taskora what you need and we'll find the right local pro.`
-            : 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
+            : siteSettings.hero_subtitle || 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
         </p>
         <form onSubmit={runSearch} className="mx-auto flex max-w-xl overflow-hidden rounded-full bg-white shadow-lg">
           <input
@@ -140,7 +159,11 @@ export default function HomePage() {
           ) : (
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-navy-700/50 mb-3">
-                {featuredIsDemandDriven && location?.city ? `Trending in ${location.city}` : 'Popular right now'}
+                {featuredIsAdminPinned
+                  ? 'Featured'
+                  : featuredIsDemandDriven && location?.city
+                  ? `Trending in ${location.city}`
+                  : 'Popular right now'}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {featured.map((c) => (

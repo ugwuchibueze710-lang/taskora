@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
-const TABS = ['Analytics', 'Agency', 'Users', 'Providers', 'Categories', 'Category Demand', 'Jobs', 'Payments', 'Disputes', 'Support', 'Reviews', 'Pro & Boost'];
+const BASE_TABS = ['Analytics', 'Agency', 'Users', 'Providers', 'Categories', 'Category Demand', 'Jobs', 'Payments', 'Disputes', 'Support', 'Reviews', 'Pro & Boost'];
 
 export default function AdminPage() {
+  const { user } = useAuth();
+  // Site Settings ("full control" over homepage UI) is level-2 only -- a
+  // level-1 ("basic") admin never even sees the tab exists, not just a
+  // disabled version of it.
+  const TABS = user?.admin_level === 2 ? [...BASE_TABS, 'Site Settings'] : BASE_TABS;
   const [tab, setTab] = useState('Analytics');
   // Polled independently of the Agency tab itself so the badge shows up
   // ("every fix will be notified there") even while an admin is sitting on
@@ -52,6 +58,7 @@ export default function AdminPage() {
       {tab === 'Support' && <SupportTab openUserId={supportUserToOpen} onOpened={() => setSupportUserToOpen(null)} />}
       {tab === 'Reviews' && <ReviewsTab />}
       {tab === 'Pro & Boost' && <SubscriptionsTab />}
+      {tab === 'Site Settings' && <SiteSettingsTab />}
     </div>
   );
 }
@@ -513,6 +520,8 @@ function AgencySection({ title, emptyText, children }) {
 }
 
 function UsersTab() {
+  const { user: currentUser } = useAuth();
+  const isLevel2 = currentUser?.admin_level === 2;
   const [users, setUsers] = useState([]);
   const load = () => api.get('/admin/users').then(({ data }) => setUsers(data.users));
   useEffect(() => { load(); }, []);
@@ -537,7 +546,7 @@ function UsersTab() {
                 control) lives there, not in an inline accordion here. */}
             <Link to={`/admin/users/${u.id}`} className="text-left flex-1 min-w-0 hover:opacity-70">
               <p className="font-medium">{u.first_name} {u.last_name} <span className="text-xs text-ink-700/50">({u.email})</span></p>
-              <p className="text-xs text-ink-700/60">{u.role} · {u.status} · mode: {u.current_mode}</p>
+              <p className="text-xs text-ink-700/60">{u.role}{u.role === 'admin' && u.admin_level ? ` (L${u.admin_level})` : ''} · {u.status} · mode: {u.current_mode}</p>
             </Link>
             <div className="flex gap-2 flex-wrap justify-end">
               {u.status === 'active' ? (
@@ -545,10 +554,10 @@ function UsersTab() {
               ) : u.status === 'suspended' ? (
                 <button onClick={() => act(u.id, 'reactivate')} className="rounded-full border border-emerald-200 px-3 py-1 text-xs text-emerald-600 hover:bg-emerald-50">Reactivate</button>
               ) : null}
-              {u.role !== 'admin' && (
+              {isLevel2 && u.role !== 'admin' && (
                 <button onClick={() => promote(u)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50">Make admin</button>
               )}
-              {u.status !== 'deleted' && u.role !== 'admin' && (
+              {isLevel2 && u.status !== 'deleted' && u.role !== 'admin' && (
                 <button onClick={() => remove(u)} className="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">Delete</button>
               )}
             </div>
@@ -894,6 +903,125 @@ function CategoryDemandTab() {
           </div>
         </Card>
       ))}
+    </div>
+  );
+}
+
+function SiteSettingsTab() {
+  const [categories, setCategories] = useState([]);
+  const [heroTitle, setHeroTitle] = useState('');
+  const [heroSubtitle, setHeroSubtitle] = useState('');
+  const [bannerEnabled, setBannerEnabled] = useState(false);
+  const [bannerMessage, setBannerMessage] = useState('');
+  const [featuredIds, setFeaturedIds] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState('');
+
+  useEffect(() => {
+    api.get('/admin/site-settings').then(({ data }) => {
+      const s = data.settings || {};
+      setHeroTitle(s.hero_title || '');
+      setHeroSubtitle(s.hero_subtitle || '');
+      setBannerEnabled(!!s.banner_enabled);
+      setBannerMessage(s.banner_message || '');
+      setFeaturedIds(s.featured_category_ids || []);
+    });
+    api.get('/admin/categories').then(({ data }) => setCategories(data.categories));
+  }, []);
+
+  const toggleCategory = (slug) => {
+    setFeaturedIds((ids) =>
+      ids.includes(slug) ? ids.filter((x) => x !== slug) : ids.length >= 6 ? ids : [...ids, slug]
+    );
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put('/admin/site-settings', {
+        heroTitle: heroTitle.trim() || null,
+        heroSubtitle: heroSubtitle.trim() || null,
+        bannerEnabled,
+        bannerMessage: bannerMessage.trim() || null,
+        featuredCategoryIds: featuredIds,
+      });
+      setSaved('Saved!');
+      setTimeout(() => setSaved(''), 1500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <p className="text-sm text-ink-700/60">
+        Changes here go live on the home page immediately -- no deploy needed. Leave a field blank to fall back to Taskora's
+        built-in default copy/behavior.
+      </p>
+
+      <Card>
+        <h2 className="font-medium mb-2">Homepage hero</h2>
+        <label className="text-xs text-ink-700/60">Headline</label>
+        <input
+          value={heroTitle}
+          onChange={(e) => setHeroTitle(e.target.value)}
+          placeholder="Find someone who can do this."
+          className="mb-2 w-full rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm"
+        />
+        <label className="text-xs text-ink-700/60">Subtitle (shown until a visitor sets their location)</label>
+        <textarea
+          value={heroSubtitle}
+          onChange={(e) => setHeroSubtitle(e.target.value)}
+          rows={2}
+          placeholder="Set your location, then tell us what you need..."
+          className="w-full rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm"
+        />
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-2">Announcement banner</h2>
+        <label className="mb-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bannerEnabled} onChange={(e) => setBannerEnabled(e.target.checked)} />
+          Show a banner above the hero
+        </label>
+        <input
+          value={bannerMessage}
+          onChange={(e) => setBannerMessage(e.target.value)}
+          placeholder="e.g. Taskora is free to use right now!"
+          className="w-full rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm"
+        />
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-1">Featured categories (homepage) -- pick up to 6</h2>
+        <p className="mb-2 text-xs text-ink-700/60">
+          Leave empty to use Taskora's automatic per-city trending list instead.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => toggleCategory(c.slug)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                featuredIds.includes(c.slug) ? 'border-ember-500 bg-ember-50 text-ember-700' : 'border-ink-900/10 hover:bg-ink-900/5'
+              }`}
+            >
+              {c.icon} {c.name}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <div>
+        <button
+          disabled={saving}
+          onClick={save}
+          className="rounded-full bg-ember-500 px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60"
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        {saved && <span className="ml-2 text-sm text-emerald-600">{saved}</span>}
+      </div>
     </div>
   );
 }

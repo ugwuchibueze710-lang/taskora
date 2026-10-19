@@ -119,7 +119,11 @@ export default function Nav() {
           )}
         </div>
 
-        <Link to={isProvider ? '/provider' : '/'} className="flex items-center mr-2">
+        {/* The top-left avatar is an identity link now -- your profile
+            (wall, or storefront if you're a provider) -- not a home/
+            dashboard shortcut; the brand badge on the right already covers
+            "take me home". */}
+        <Link to="/profile" className="flex items-center mr-2" aria-label="Your profile">
           <span className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-accent-100 flex items-center justify-center text-xs font-display font-semibold text-accent-600">
             <SafeImage
               src={user.avatar_url}

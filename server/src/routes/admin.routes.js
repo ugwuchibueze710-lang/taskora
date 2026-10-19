@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { query, withTransaction } from '../lib/db.js';
 import { asyncHandler, badRequest, notFound, conflict } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, requireLevel2Admin } from '../middleware/auth.js';
 import { logAdminAction } from '../services/audit.service.js';
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 import { refundPayment } from '../services/payment.service.js';
@@ -17,6 +17,7 @@ import { recomputeCompleteness } from '../services/provider.service.js';
 import { uploader, uploadToStorage } from '../middleware/upload.js';
 import { businessInfoSchema } from './provider.routes.js';
 import { getLatestGrant, assertApprovedAccess } from '../services/admin-edit-grant.service.js';
+import { getSiteSettings, setSiteSetting } from '../services/site-settings.service.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -33,7 +34,7 @@ router.get(
       where = `WHERE lower(first_name || ' ' || last_name || ' ' || email) LIKE $1`;
     }
     const { rows } = await query(
-      `SELECT id, first_name, last_name, email, role, status, current_mode, created_at FROM users ${where} ORDER BY created_at DESC LIMIT 200`,
+      `SELECT id, first_name, last_name, email, role, admin_level, status, current_mode, created_at FROM users ${where} ORDER BY created_at DESC LIMIT 200`,
       params
     );
     res.json({ users: rows });
@@ -50,7 +51,7 @@ router.get(
   '/users/:id',
   asyncHandler(async (req, res) => {
     const { rows: userRows } = await query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.status, u.current_mode, u.created_at,
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.admin_level, u.status, u.current_mode, u.created_at,
               p.avatar_url, p.location_label
          FROM users u LEFT JOIN profiles p ON p.user_id = u.id
         WHERE u.id = $1`,
@@ -140,26 +141,77 @@ router.post(
   })
 );
 
-// Grants full, equal admin access to an existing account -- the app's own
-// support for "more than one admin" isn't a separate permission tier, it's
-// just this role check (see middleware/auth.js's requireAdmin): any user
-// with role = 'admin' can already do everything every other admin can, so
-// letting an existing admin promote someone else here is the entire
-// feature, with no forged credentials or separate admin-account flow
-// needed for admin #2, #3, etc.
+// Two-level admin system: level 1 ("basic admin") is every day-to-day
+// support/moderation action already gated by plain requireAdmin above --
+// suspend/reactivate users & providers, disputes, support, reviews, etc.
+// Level 2 is "full control": everything level 1 can do, PLUS the Site
+// Settings panel, deleting a user account outright, and -- exclusively --
+// granting or revoking admin status and level-2 status itself, so a
+// level-1 admin can never hand out more power than they themselves have.
+// New admins start at level 1 by default; a level-2 admin raises them to
+// level 2 separately via /admin-level below.
 router.post(
   '/users/:id/promote',
+  requireLevel2Admin,
   asyncHandler(async (req, res) => {
-    const { rows } = await query(`UPDATE users SET role = 'admin', updated_at = now() WHERE id = $1 RETURNING id`, [req.params.id]);
+    const { rows } = await query(
+      `UPDATE users SET role = 'admin', admin_level = COALESCE(admin_level, 1), updated_at = now() WHERE id = $1 RETURNING id`,
+      [req.params.id]
+    );
     if (!rows[0]) throw notFound('User not found.');
     await logAdminAction({ adminUserId: req.user.id, actionType: 'promote_admin', targetType: 'user', targetId: req.params.id });
     res.json({ success: true });
   })
 );
 
+router.post(
+  '/users/:id/demote',
+  requireLevel2Admin,
+  asyncHandler(async (req, res) => {
+    if (req.params.id === req.user.id) throw badRequest("You can't remove your own admin access.");
+    const { rows } = await query(
+      `UPDATE users SET role = 'user', admin_level = NULL, updated_at = now() WHERE id = $1 RETURNING id`,
+      [req.params.id]
+    );
+    if (!rows[0]) throw notFound('User not found.');
+    await logAdminAction({ adminUserId: req.user.id, actionType: 'demote_admin', targetType: 'user', targetId: req.params.id });
+    res.json({ success: true });
+  })
+);
+
+// Changes an EXISTING admin's level (1 <-> 2) -- distinct from
+// promote/demote, which grant/remove admin status entirely. Requires the
+// target to already be an admin: this is "change their tier", not a
+// shortcut around /promote for a brand-new admin.
+router.post(
+  '/users/:id/admin-level',
+  requireLevel2Admin,
+  validateBody(z.object({ level: z.union([z.literal(1), z.literal(2)]) })),
+  asyncHandler(async (req, res) => {
+    if (req.params.id === req.user.id && req.body.level !== 2) {
+      throw badRequest("You can't lower your own admin level.");
+    }
+    const { rows } = await query(
+      `UPDATE users SET admin_level = $1, updated_at = now() WHERE id = $2 AND role = 'admin' RETURNING id`,
+      [req.body.level, req.params.id]
+    );
+    if (!rows[0]) throw notFound('Admin not found.');
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'set_admin_level',
+      targetType: 'user',
+      targetId: req.params.id,
+      metadata: { level: req.body.level },
+    });
+    res.json({ success: true });
+  })
+);
+
 router.delete(
   '/users/:id',
+  requireLevel2Admin,
   asyncHandler(async (req, res) => {
+    if (req.params.id === req.user.id) throw badRequest("You can't delete your own account from here.");
     await query(`UPDATE users SET status = 'deleted', email = email || '.deleted.' || id, updated_at = now() WHERE id = $1`, [
       req.params.id,
     ]);
@@ -988,6 +1040,59 @@ router.post(
       targetId: null,
     });
     res.json(results);
+  })
+);
+
+// ---- Site Settings (homepage hero/banner/featured categories) ----
+// Read is any admin (level 1 can see current state even though they can't
+// change it); the write is level-2 only, "full control" over the UI, per
+// the explicit scope confirmed for this panel -- homepage content only,
+// not a general page builder.
+router.get(
+  '/site-settings',
+  asyncHandler(async (req, res) => {
+    const settings = await getSiteSettings();
+    res.json({ settings });
+  })
+);
+
+const siteSettingsSchema = z.object({
+  heroTitle: z.string().trim().max(200).nullable().optional(),
+  heroSubtitle: z.string().trim().max(400).nullable().optional(),
+  bannerEnabled: z.boolean().optional(),
+  bannerMessage: z.string().trim().max(300).nullable().optional(),
+  featuredCategoryIds: z.array(z.string()).max(6).optional(),
+});
+
+const SITE_SETTINGS_KEYS = {
+  heroTitle: 'hero_title',
+  heroSubtitle: 'hero_subtitle',
+  bannerEnabled: 'banner_enabled',
+  bannerMessage: 'banner_message',
+  featuredCategoryIds: 'featured_category_ids',
+};
+
+router.put(
+  '/site-settings',
+  requireLevel2Admin,
+  validateBody(siteSettingsSchema),
+  asyncHandler(async (req, res) => {
+    // Only the keys actually present in the request body are touched --
+    // this is a partial update (e.g. toggling the banner on its own
+    // doesn't blank out the hero text) rather than a full-object replace.
+    const entries = Object.entries(req.body);
+    for (const [field, value] of entries) {
+      await setSiteSetting(SITE_SETTINGS_KEYS[field], value, req.user.id);
+    }
+    await logAdminAction({
+      adminUserId: req.user.id,
+      actionType: 'update_site_settings',
+      targetType: 'site_settings',
+      targetId: null,
+      metadata: { fields: entries.map(([f]) => f) },
+    });
+    const settings = await getSiteSettings();
+    res.json({ settings });
   })
 );
 

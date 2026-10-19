@@ -12,6 +12,8 @@ import HomePage from './pages/customer/HomePage.jsx';
 import CategoryDirectoryPage from './pages/customer/CategoryDirectoryPage.jsx';
 import SearchResultsPage from './pages/customer/SearchResultsPage.jsx';
 import ProviderProfilePage from './pages/customer/ProviderProfilePage.jsx';
+import ProfileWallPage from './pages/customer/ProfileWallPage.jsx';
+import MyProfilePage from './pages/customer/MyProfilePage.jsx';
 import MessagesPage from './pages/customer/MessagesPage.jsx';
 import ConversationPage from './pages/customer/ConversationPage.jsx';
 import FavoritesPage from './pages/customer/FavoritesPage.jsx';
@@ -54,6 +56,8 @@ export default function App() {
         <Route path="/services" element={<CategoryDirectoryPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
         <Route path="/providers/:id" element={<ProviderProfilePage />} />
+        <Route path="/profile" element={<MyProfilePage />} />
+        <Route path="/u/:id" element={<ProfileWallPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:id" element={<ConversationPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />

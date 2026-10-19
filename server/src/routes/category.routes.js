@@ -3,6 +3,7 @@ import { query } from '../lib/db.js';
 import { asyncHandler } from '../lib/errors.js';
 import { searchCategories, listCategoryGroupsWithCategories } from '../services/category.service.js';
 import { getFeaturedCategoriesForCity, getDefaultFeaturedCategories } from '../services/category-demand.service.js';
+import { getSiteSetting } from '../services/site-settings.service.js';
 
 const router = Router();
 
@@ -19,12 +20,23 @@ router.get(
   '/featured',
   asyncHandler(async (req, res) => {
     const city = req.query.city?.toString().trim() || null;
+
+    // A level-2 admin's manual pin (Site Settings panel) always wins over
+    // real demand data -- it exists specifically so the team can feature
+    // something on purpose (a seasonal push, a new category needing
+    // visibility) regardless of what's actually trending right now.
+    const pinned = await getSiteSetting('featured_category_ids');
+    if (Array.isArray(pinned) && pinned.length > 0) {
+      const categories = await getDefaultFeaturedCategories({ ids: pinned });
+      return res.json({ categories, city, isDemandDriven: false, isAdminPinned: true });
+    }
+
     let categories = city ? await getFeaturedCategoriesForCity(city) : [];
     let isDemandDriven = categories.length > 0;
     if (!isDemandDriven) {
       categories = await getDefaultFeaturedCategories();
     }
-    res.json({ categories, city, isDemandDriven });
+    res.json({ categories, city, isDemandDriven, isAdminPinned: false });
   })
 );
 

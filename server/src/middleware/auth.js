@@ -28,8 +28,8 @@ async function resolveSupabaseUser(req) {
 // two separate columns instead of one.
 async function loadAppUser(supabaseUserId) {
   const { rows } = await query(
-    `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.current_mode, u.status, u.created_at,
-            p.avatar_url, p.location_label, p.location_lat, p.location_lng, p.location_city,
+    `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.admin_level, u.current_mode, u.status, u.created_at,
+            p.avatar_url, p.bio, p.location_label, p.location_lat, p.location_lng, p.location_city,
             pr.id AS provider_id, pr.status AS provider_status
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
@@ -38,6 +38,25 @@ async function loadAppUser(supabaseUserId) {
     [supabaseUserId]
   );
   return rows[0] || null;
+}
+
+// A tiny, hardcoded allowlist of emails that should always be a level-2
+// admin, enforced idempotently on every authenticated request rather than
+// as a one-time migration UPDATE (migration 018 covers "already has a
+// users row at migration time"; this covers "signs up later", or has their
+// level changed back some other way) -- so granting this belongs here, in
+// code, by explicit request, rather than only in a SQL migration that only
+// runs once. Deliberately tiny and hardcoded (not a DB-editable list) --
+// this is the one level of admin access that genuinely needs a code change
+// to alter, exactly as asked: every other admin-management action (who
+// else is admin, who is level 2) goes through the UI from here on.
+const SUPER_ADMIN_EMAILS = ['israelhugo636@gmail.com'];
+
+async function ensureSuperAdmin(user) {
+  if (!user?.email || !SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) return user;
+  if (user.role === 'admin' && user.admin_level === 2) return user;
+  await query(`UPDATE users SET role = 'admin', admin_level = 2, updated_at = now() WHERE id = $1`, [user.id]);
+  return { ...user, role: 'admin', admin_level: 2 };
 }
 
 // Creates a fresh app-side row (users/profiles/user_settings) for a Supabase
@@ -100,6 +119,7 @@ export async function requireAuth(req, res, next) {
       user = await createAppUserForSupabaseIdentity(supaUser);
     }
     if (user.status !== 'active') return next(forbidden('This account is not active.'));
+    user = await ensureSuperAdmin(user);
     req.user = user;
     req.supabaseUser = supaUser;
     next();
@@ -110,6 +130,20 @@ export async function requireAuth(req, res, next) {
 
 export function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') return next(forbidden('Admin access required.'));
+  next();
+}
+
+// Level 2 is "full control": everything level 1 (the plain requireAdmin
+// check above) can already do, plus deleting a user account, the Site
+// Settings panel, and exclusive rights to grant/revoke admin status and
+// level-2 status itself (see admin.routes.js's promote/demote/admin-level
+// routes). A legacy admin row with no admin_level set yet (NULL -- any
+// admin promoted before migration 018) is treated as level 1, the safe
+// default, never silently upgraded.
+export function requireLevel2Admin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin' || req.user.admin_level !== 2) {
+    return next(forbidden('Level 2 admin access required.'));
+  }
   next();
 }
 
@@ -124,8 +158,9 @@ export async function attachUserIfPresent(req, res, next) {
   try {
     const supaUser = await resolveSupabaseUser(req);
     if (!supaUser) return next();
-    const user = await loadAppUser(supaUser.id);
+    let user = await loadAppUser(supaUser.id);
     if (user && user.status === 'active') {
+      user = await ensureSuperAdmin(user);
       req.user = user;
       req.supabaseUser = supaUser;
     }

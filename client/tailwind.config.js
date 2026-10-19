@@ -88,11 +88,22 @@ export default {
           '0%': { opacity: 0, transform: 'translateY(-8px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
+        checkPop: {
+          '0%': { opacity: 0, transform: 'scale(0.2)' },
+          '60%': { opacity: 1, transform: 'scale(1.25)' },
+          '100%': { opacity: 1, transform: 'scale(1)' },
+        },
+        uploadGlow: {
+          '0%, 100%': { opacity: 0.55 },
+          '50%': { opacity: 1 },
+        },
       },
       animation: {
         lockSnap: 'lockSnap 0.4s ease',
         popIn: 'popIn 0.25s ease-out',
         slideDown: 'slideDown 0.2s ease-out',
+        checkPop: 'checkPop 0.45s cubic-bezier(.34,1.56,.64,1)',
+        uploadGlow: 'uploadGlow 1.1s ease-in-out infinite',
       },
     },
   },

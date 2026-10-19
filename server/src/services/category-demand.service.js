@@ -112,8 +112,13 @@ export async function getFeaturedCategoriesForCity(city, { limit = FEATURED_LIMI
  * catalog's sort_order, so this list is completely independent of wherever
  * these categories happen to live in the catalog file or its groups.
  */
-export async function getDefaultFeaturedCategories({ limit = FEATURED_LIMIT } = {}) {
-  const ids = DEFAULT_FEATURED_CATEGORY_IDS.slice(0, limit);
+export async function getDefaultFeaturedCategories({ limit = FEATURED_LIMIT, ids: overrideIds } = {}) {
+  // `overrideIds` (slugs), when given, come from the admin-set
+  // `featured_category_ids` site setting (category.routes.js's /featured
+  // handler) -- a manual "pin these" list takes priority over the
+  // hardcoded starting lineup, resolved through this exact same by-slug
+  // query so both sources render identically.
+  const ids = (overrideIds && overrideIds.length ? overrideIds : DEFAULT_FEATURED_CATEGORY_IDS).slice(0, limit);
   const { rows } = await query(
     `SELECT c.id, c.slug, c.name, c.icon, c.description, c.image_url, c.keywords,
             g.slug AS group_slug, g.name AS group_name
