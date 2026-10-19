@@ -160,6 +160,14 @@ export default function BrandIntro() {
   }, [introVisible]);
 
   // Sequence the phases, and skip on click/tap or reduced motion.
+  // Deliberately NOT keyed on `phase`: this schedules every timer once, up
+  // front, from the moment the intro starts ('enter'). If it re-ran on each
+  // phase change (e.g. depended on [phase]), the dependency change itself
+  // would fire this effect's own cleanup first and clearTimeout() every
+  // still-pending timer -- so only the very first one (wordmark) would ever
+  // land, and the intro would freeze on that frame forever since nothing
+  // would be left to fire 'hold' or 'exit'. Running this once off an empty
+  // dependency array lets all the timers it scheduled actually complete.
   useEffect(() => {
     if (phase !== 'enter') return undefined;
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -172,7 +180,8 @@ export default function BrandIntro() {
       timers.push(setTimeout(() => setPhase('exit'), 2150));
     }
     return () => timers.forEach(clearTimeout);
-  }, [phase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // On exit, measure where the real nav badge lives (or fall back to a
   // generic top-right spot) and animate the wrapper there. useLayoutEffect
