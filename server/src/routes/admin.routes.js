@@ -592,6 +592,59 @@ router.delete(
   })
 );
 
+// ---- Sections (category_groups) ----
+// The "sections" categories are browsed/organized under on the home page
+// and in the provider category picker (e.g. "Home Services", "Automotive").
+// Previously these only ever came from the hardcoded seed file with no way
+// to add or rename one without a code change; now any admin can.
+router.get(
+  '/category-groups',
+  asyncHandler(async (req, res) => {
+    const { rows } = await query('SELECT * FROM category_groups ORDER BY sort_order, name');
+    res.json({ groups: rows });
+  })
+);
+
+router.post(
+  '/category-groups',
+  validateBody(z.object({ name: z.string().trim().min(1).max(120), sortOrder: z.number().int().optional() })),
+  asyncHandler(async (req, res) => {
+    const { name, sortOrder } = req.body;
+    const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `section-${Date.now()}`;
+    const { rows } = await query(
+      `INSERT INTO category_groups (slug, name, sort_order) VALUES ($1, $2, COALESCE($3, 0)) RETURNING *`,
+      [slug, name, sortOrder]
+    );
+    res.status(201).json({ group: rows[0] });
+  })
+);
+
+router.patch(
+  '/category-groups/:id',
+  validateBody(z.object({ name: z.string().max(120).optional(), sortOrder: z.number().int().optional() })),
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `UPDATE category_groups SET name = COALESCE($1, name), sort_order = COALESCE($2, sort_order) WHERE id = $3 RETURNING *`,
+      [req.body.name, req.body.sortOrder, req.params.id]
+    );
+    if (!rows[0]) throw notFound('Section not found.');
+    res.json({ group: rows[0] });
+  })
+);
+
+router.post(
+  '/category-groups/reorder',
+  validateBody(z.object({ order: z.array(z.object({ id: z.number().int(), sortOrder: z.number().int() })) })),
+  asyncHandler(async (req, res) => {
+    await withTransaction(async (client) => {
+      for (const item of req.body.order) {
+        await client.query('UPDATE category_groups SET sort_order = $1 WHERE id = $2', [item.sortOrder, item.id]);
+      }
+    });
+    res.json({ success: true });
+  })
+);
+
 // ---- Categories ----
 router.get(
   '/categories',
@@ -603,13 +656,20 @@ router.get(
 
 router.post(
   '/categories',
-  validateBody(z.object({ name: z.string().trim().min(1).max(120), icon: z.string().max(20).optional(), sortOrder: z.number().int().optional() })),
+  validateBody(
+    z.object({
+      name: z.string().trim().min(1).max(120),
+      icon: z.string().max(20).optional(),
+      sortOrder: z.number().int().optional(),
+      groupId: z.number().int().nullable().optional(),
+    })
+  ),
   asyncHandler(async (req, res) => {
-    const { name, icon, sortOrder } = req.body;
+    const { name, icon, sortOrder, groupId } = req.body;
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const { rows } = await query(
-      `INSERT INTO categories (slug, name, icon, sort_order) VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *`,
-      [slug, name, icon || '🛠️', sortOrder]
+      `INSERT INTO categories (slug, name, icon, sort_order, group_id) VALUES ($1, $2, $3, COALESCE($4, 0), $5) RETURNING *`,
+      [slug, name, icon || '🛠️', sortOrder, groupId ?? null]
     );
     res.status(201).json({ category: rows[0] });
   })
@@ -626,10 +686,19 @@ router.patch(
       description: z.string().max(500).nullable().optional(),
       imageUrl: z.string().max(2000).nullable().optional(),
       keywords: z.array(z.string().max(60)).optional(),
+      groupId: z.number().int().nullable().optional(),
     })
   ),
   asyncHandler(async (req, res) => {
-    const { name, icon, sortOrder, isActive, description, imageUrl, keywords } = req.body;
+    const { name, icon, sortOrder, isActive, description, imageUrl, keywords, groupId } = req.body;
+    // group_id can't use the same COALESCE($n, group_id) trick as the other
+    // fields: COALESCE can't tell "groupId wasn't sent" from "groupId was
+    // explicitly sent as null" (both arrive as SQL NULL), and null is the
+    // real, valid value here -- "move this category to no section". Without
+    // this, picking "-- No section --" in the admin panel would silently do
+    // nothing. hasGroupId + a CASE is what actually lets null through only
+    // when the field was present in the request body at all.
+    const hasGroupId = Object.prototype.hasOwnProperty.call(req.body, 'groupId');
     const { rows } = await query(
       `UPDATE categories SET
          name = COALESCE($1, name),
@@ -638,9 +707,10 @@ router.patch(
          is_active = COALESCE($4, is_active),
          description = COALESCE($5, description),
          image_url = COALESCE($6, image_url),
-         keywords = COALESCE($7, keywords)
-       WHERE id = $8 RETURNING *`,
-      [name, icon, sortOrder, isActive, description, imageUrl, keywords, req.params.id]
+         keywords = COALESCE($7, keywords),
+         group_id = CASE WHEN $8 THEN $9 ELSE group_id END
+       WHERE id = $10 RETURNING *`,
+      [name, icon, sortOrder, isActive, description, imageUrl, keywords, hasGroupId, groupId ?? null, req.params.id]
     );
     if (!rows[0]) throw notFound('Category not found.');
     res.json({ category: rows[0] });
@@ -661,6 +731,21 @@ router.post(
 );
 
 // ---- Services ----
+// Admin-only: includes inactive services too (the public
+// GET /categories/:id/services only ever shows active ones), so a
+// deactivated service doesn't just disappear from the admin's view with no
+// way to see or reactivate it.
+router.get(
+  '/categories/:id/services',
+  asyncHandler(async (req, res) => {
+    const { rows } = await query(
+      `SELECT id, name, slug, is_custom, is_active, created_by_user_id FROM services WHERE category_id = $1 ORDER BY name`,
+      [req.params.id]
+    );
+    res.json({ services: rows });
+  })
+);
+
 router.post(
   '/services',
   validateBody(z.object({ categoryId: z.number().int(), name: z.string().trim().min(1).max(160) })),
@@ -668,7 +753,9 @@ router.post(
     const { categoryId, name } = req.body;
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const { rows } = await query(
-      `INSERT INTO services (category_id, name, slug) VALUES ($1, $2, $3) RETURNING *`,
+      `INSERT INTO services (category_id, name, slug) VALUES ($1, $2, $3)
+       ON CONFLICT (category_id, slug) DO UPDATE SET name = EXCLUDED.name, is_active = true
+       RETURNING *`,
       [categoryId, name, slug]
     );
     res.status(201).json({ service: rows[0] });

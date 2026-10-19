@@ -635,27 +635,275 @@ function ProvidersTab() {
   );
 }
 
+// Full self-service catalog management: sections (category_groups),
+// categories within them, and -- per category -- the finer-grained
+// services providers actually pick from. Before this, adding something as
+// small as a missing category or sub-service meant a code change and a
+// deploy; now every one of those is a plain admin-panel edit, with nothing
+// "unlimited" left that secretly still requires a developer.
 function CategoriesTab() {
+  const [groups, setGroups] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [name, setName] = useState('');
-  const load = () => api.get('/admin/categories').then(({ data }) => setCategories(data.categories));
-  useEffect(() => { load(); }, []);
-  const add = async (e) => { e.preventDefault(); if (!name.trim()) return; await api.post('/admin/categories', { name }); setName(''); load(); };
-  const toggle = async (c) => { await api.patch(`/admin/categories/${c.id}`, { isActive: !c.is_active }); load(); };
+  const [expandedId, setExpandedId] = useState(null);
+
+  const loadGroups = () => api.get('/admin/category-groups').then(({ data }) => setGroups(data.groups));
+  const loadCategories = () => api.get('/admin/categories').then(({ data }) => setCategories(data.categories));
+  useEffect(() => { loadGroups(); loadCategories(); }, []);
+
+  const groupName = (id) => groups.find((g) => g.id === id)?.name || '— No section —';
+
+  const byGroup = new Map();
+  for (const c of categories) {
+    const key = c.group_id || 'ungrouped';
+    if (!byGroup.has(key)) byGroup.set(key, []);
+    byGroup.get(key).push(c);
+  }
+  const orderedGroupKeys = [
+    ...groups.map((g) => g.id),
+    ...(byGroup.has('ungrouped') ? ['ungrouped'] : []),
+  ].filter((k) => byGroup.has(k));
+
   return (
-    <div className="space-y-3">
-      <form onSubmit={add} className="flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New category name" className="rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm" />
-        <button className="rounded-lg bg-ember-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-ember-600">Add</button>
-      </form>
-      <div className="space-y-1.5">
-        {categories.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded-lg border border-ink-900/8 bg-white px-3 py-2 text-sm">
-            <span>{c.icon} {c.name}</span>
-            <button onClick={() => toggle(c)} className={`rounded-full px-3 py-0.5 text-xs ${c.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-900/10 text-ink-700/60'}`}>
-              {c.is_active ? 'Active' : 'Inactive'}
-            </button>
+    <div className="space-y-6">
+      <SectionsManager groups={groups} onChanged={loadGroups} />
+
+      <div className="space-y-3">
+        <h3 className="font-display text-lg">Categories</h3>
+        <NewCategoryForm groups={groups} onAdded={loadCategories} />
+        <div className="space-y-4">
+          {orderedGroupKeys.map((key) => (
+            <div key={key}>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-700/40">
+                {key === 'ungrouped' ? '— No section —' : groupName(key)}
+              </p>
+              <div className="space-y-1.5">
+                {byGroup.get(key).map((c) => (
+                  <CategoryRow
+                    key={c.id}
+                    category={c}
+                    groups={groups}
+                    expanded={expandedId === c.id}
+                    onToggleExpand={() => setExpandedId((id) => (id === c.id ? null : c.id))}
+                    onChanged={loadCategories}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionsManager({ groups, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [editing, setEditing] = useState(null); // { id, name }
+
+  const add = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    await api.post('/admin/category-groups', { name, sortOrder: groups.length });
+    setName('');
+    onChanged();
+  };
+
+  const saveRename = async () => {
+    if (!editing.name.trim()) return;
+    await api.patch(`/admin/category-groups/${editing.id}`, { name: editing.name });
+    setEditing(null);
+    onChanged();
+  };
+
+  const move = async (index, dir) => {
+    const target = index + dir;
+    if (target < 0 || target >= groups.length) return;
+    const reordered = [...groups];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    await api.post('/admin/category-groups/reorder', {
+      order: reordered.map((g, i) => ({ id: g.id, sortOrder: i })),
+    });
+    onChanged();
+  };
+
+  return (
+    <div className="rounded-xl border border-ink-900/8 bg-white p-4">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
+        <h3 className="font-display text-lg">Sections <span className="text-sm font-normal text-ink-700/40">({groups.length})</span></h3>
+        <span className="text-ink-700/40">{open ? '▾' : '▸'}</span>
+      </button>
+      <p className="mt-0.5 text-xs text-ink-700/50">The groupings categories are browsed under (e.g. "Home Services", "Automotive").</p>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <form onSubmit={add} className="flex gap-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New section name"
+              className="flex-1 rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm" />
+            <button className="rounded-lg bg-ember-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-ember-600">Add</button>
+          </form>
+          <div className="space-y-1.5">
+            {groups.map((g, i) => (
+              <div key={g.id} className="flex items-center justify-between gap-2 rounded-lg border border-ink-900/8 px-3 py-1.5 text-sm">
+                {editing?.id === g.id ? (
+                  <input
+                    autoFocus
+                    value={editing.name}
+                    onChange={(e) => setEditing({ id: g.id, name: e.target.value })}
+                    onBlur={saveRename}
+                    onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+                    className="flex-1 rounded border border-ink-900/15 px-2 py-0.5 text-sm"
+                  />
+                ) : (
+                  <button type="button" onClick={() => setEditing({ id: g.id, name: g.name })} className="flex-1 text-left hover:underline">
+                    {g.name}
+                  </button>
+                )}
+                <div className="flex items-center gap-1 text-ink-700/40">
+                  <button type="button" disabled={i === 0} onClick={() => move(i, -1)} className="px-1 disabled:opacity-20" aria-label="Move up">▲</button>
+                  <button type="button" disabled={i === groups.length - 1} onClick={() => move(i, 1)} className="px-1 disabled:opacity-20" aria-label="Move down">▼</button>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewCategoryForm({ groups, onAdded }) {
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('');
+  const [groupId, setGroupId] = useState('');
+
+  const add = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    await api.post('/admin/categories', { name, icon: icon || undefined, groupId: groupId ? Number(groupId) : null });
+    setName('');
+    setIcon('');
+    onAdded();
+  };
+
+  return (
+    <form onSubmit={add} className="flex flex-wrap gap-2 rounded-xl border border-ink-900/8 bg-white p-3">
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New category name"
+        className="min-w-[10rem] flex-1 rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm" />
+      <input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Icon (emoji)"
+        maxLength={4} className="w-24 rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm" />
+      <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="rounded-lg border border-ink-900/15 px-2 py-1.5 text-sm">
+        <option value="">— No section —</option>
+        {groups.map((g) => (
+          <option key={g.id} value={g.id}>{g.name}</option>
+        ))}
+      </select>
+      <button className="rounded-lg bg-ember-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-ember-600">Add category</button>
+    </form>
+  );
+}
+
+function CategoryRow({ category, groups, expanded, onToggleExpand, onChanged }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(category.name);
+  const [icon, setIcon] = useState(category.icon || '');
+  const [groupId, setGroupId] = useState(category.group_id || '');
+
+  const save = async () => {
+    await api.patch(`/admin/categories/${category.id}`, {
+      name,
+      icon: icon || undefined,
+      groupId: groupId ? Number(groupId) : null,
+    });
+    setEditing(false);
+    onChanged();
+  };
+
+  const toggleActive = async () => {
+    await api.patch(`/admin/categories/${category.id}`, { isActive: !category.is_active });
+    onChanged();
+  };
+
+  return (
+    <div className="rounded-lg border border-ink-900/8 bg-white">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+        {editing ? (
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <input value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={4} className="w-16 rounded border border-ink-900/15 px-2 py-1 text-sm" />
+            <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-[8rem] flex-1 rounded border border-ink-900/15 px-2 py-1 text-sm" />
+            <select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="rounded border border-ink-900/15 px-2 py-1 text-sm">
+              <option value="">— No section —</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+            <button onClick={save} className="rounded-full bg-ember-500 px-3 py-1 text-xs font-semibold text-white hover:bg-ember-600">Save</button>
+            <button onClick={() => setEditing(false)} className="rounded-full border border-ink-900/15 px-3 py-1 text-xs hover:bg-ink-900/5">Cancel</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setEditing(true)} className="flex-1 text-left hover:underline">
+            {category.icon} {category.name}
+          </button>
+        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={toggleActive} className={`rounded-full px-3 py-0.5 text-xs ${category.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-900/10 text-ink-700/60'}`}>
+            {category.is_active ? 'Active' : 'Inactive'}
+          </button>
+          <button type="button" onClick={onToggleExpand} className="text-ink-700/40 hover:text-ink-700">
+            {expanded ? 'Hide services ▾' : 'Services ▸'}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="border-t border-ink-900/8 px-3 py-2">
+          <ServicesManager categoryId={category.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServicesManager({ categoryId }) {
+  const [services, setServices] = useState(null);
+  const [name, setName] = useState('');
+
+  const load = () => api.get(`/admin/categories/${categoryId}/services`).then(({ data }) => setServices(data.services));
+  useEffect(() => { load(); }, [categoryId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const add = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    await api.post('/admin/services', { categoryId, name });
+    setName('');
+    load();
+  };
+
+  const toggleActive = async (s) => {
+    await api.patch(`/admin/services/${s.id}`, { isActive: !s.is_active });
+    load();
+  };
+
+  if (!services) return <p className="text-xs text-ink-700/50">Loading services…</p>;
+
+  return (
+    <div className="space-y-2">
+      <form onSubmit={add} className="flex gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New service name"
+          className="flex-1 rounded-lg border border-ink-900/15 px-2 py-1 text-xs" />
+        <button className="rounded-lg border border-ink-900/15 px-3 py-1 text-xs hover:bg-ink-900/5">Add</button>
+      </form>
+      {services.length === 0 && <p className="text-xs text-ink-700/50">No services under this category yet.</p>}
+      <div className="flex flex-wrap gap-1.5">
+        {services.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => toggleActive(s)}
+            title={s.is_custom ? 'Added by a provider' : 'Official service'}
+            className={`rounded-full border px-2.5 py-1 text-xs ${
+              s.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-ink-900/10 bg-ink-900/5 text-ink-700/50'
+            }`}
+          >
+            {s.name}{s.is_custom && <span className="ml-1 text-ink-700/40">(provider-added)</span>}
+          </button>
         ))}
       </div>
     </div>

@@ -38,16 +38,31 @@ function slugify(name) {
  * direct DB access required.
  */
 export async function syncCategoryCatalog() {
+  // ON CONFLICT DO NOTHING, not DO UPDATE: this only ever ADDS a group or
+  // category that doesn't exist yet (by slug) -- it never touches one that
+  // already exists. That's deliberate. Categories/sections are now fully
+  // admin-editable from the admin panel (name, icon, group, description,
+  // keywords, sort order), and this function still runs on every single
+  // server boot/deploy (see index.js) to make a brand-new environment work
+  // with zero manual steps. The old DO UPDATE behavior force-overwrote
+  // every one of those fields back to this hardcoded file's values on every
+  // restart -- so an admin edit would look saved, then silently vanish on
+  // the next deploy. A category/group id already in the database (an admin
+  // created it, or a previous boot seeded it) is this function's business
+  // to leave alone from here on; only a genuinely new slug -- e.g. one
+  // added to CATEGORIES/CATEGORY_GROUPS in a future code change -- still
+  // gets inserted automatically.
   await withTransaction(async (client) => {
     const groupIds = {};
     for (const [i, g] of CATEGORY_GROUPS.entries()) {
       const { rows } = await client.query(
         `INSERT INTO category_groups (slug, name, sort_order) VALUES ($1, $2, $3)
-         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order
+         ON CONFLICT (slug) DO NOTHING
          RETURNING id`,
         [g.slug, g.name, i]
       );
-      groupIds[g.slug] = rows[0].id;
+      const id = rows[0]?.id ?? (await client.query('SELECT id FROM category_groups WHERE slug = $1', [g.slug])).rows[0].id;
+      groupIds[g.slug] = id;
     }
 
     for (const [i, c] of CATEGORIES.entries()) {
@@ -57,14 +72,7 @@ export async function syncCategoryCatalog() {
       await client.query(
         `INSERT INTO categories (slug, name, icon, sort_order, group_id, description, image_url, keywords, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-         ON CONFLICT (slug) DO UPDATE SET
-           name = EXCLUDED.name,
-           group_id = EXCLUDED.group_id,
-           description = EXCLUDED.description,
-           image_url = COALESCE(EXCLUDED.image_url, categories.image_url),
-           keywords = EXCLUDED.keywords,
-           sort_order = EXCLUDED.sort_order,
-           is_active = true`,
+         ON CONFLICT (slug) DO NOTHING`,
         [slug, c.name, icon, i, groupId, c.description || null, c.image || null, c.keywords || []]
       );
     }
