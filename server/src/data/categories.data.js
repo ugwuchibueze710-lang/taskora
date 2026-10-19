@@ -145,6 +145,13 @@ export const CATEGORIES = [
   cat('tech-support', 'Tech Support', 'technology', 'General technical troubleshooting.', ['computer help']),
   cat('software-installation', 'Software Installation', 'technology', 'Installing and configuring software.', []),
   cat('device-setup', 'Device Setup', 'technology', 'General new-device setup help.', ['new device setup']),
+  cat(
+    'web-software-development',
+    'Web & Software Development',
+    'technology',
+    'Building and maintaining websites, web apps, and custom software.',
+    ['web developer', 'website developer', 'web design', 'app developer', 'software developer', 'software engineer', 'programmer', 'it developer', 'custom software', 'coding']
+  ),
 
   // ---- Beauty & Personal Care -----------------------------------------
   catImg('haircut', 'Haircut', 'beauty-personal-care', 'Haircuts at home or on location.', ['hair cut'], 'haircut'),
