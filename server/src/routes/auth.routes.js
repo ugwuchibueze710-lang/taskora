@@ -64,9 +64,26 @@ router.post(
       const { rows } = await client.query(
         `INSERT INTO users (first_name, last_name, email, supabase_user_id)
          VALUES ($1, $2, $3, $4)
+         ON CONFLICT (supabase_user_id) DO NOTHING
          RETURNING id, first_name, last_name, email, role, current_mode, status, created_at`,
         [firstName, lastName, supaUser.email, supaUser.id]
       );
+      if (!rows.length) {
+        // Lost the race against requireAuth's own auto-heal (middleware/
+        // auth.js), which can fire in parallel from the SIGNED_IN event
+        // signUp() triggers the instant it resolves -- before this request
+        // even finishes. It already created the row (and profile/settings)
+        // with a generic placeholder name, since it only has the Supabase
+        // identity to go on; this request has the name the person actually
+        // typed, so fix that up rather than silently discarding it.
+        const { rows: updated } = await client.query(
+          `UPDATE users SET first_name = $1, last_name = $2, updated_at = now()
+            WHERE supabase_user_id = $3
+            RETURNING id, first_name, last_name, email, role, current_mode, status, created_at`,
+          [firstName, lastName, supaUser.id]
+        );
+        return updated[0];
+      }
       const newUser = rows[0];
       await client.query('INSERT INTO profiles (user_id) VALUES ($1)', [newUser.id]);
       await client.query(

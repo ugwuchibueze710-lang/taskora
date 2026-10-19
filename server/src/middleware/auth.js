@@ -64,9 +64,22 @@ async function createAppUserForSupabaseIdentity(supaUser) {
     const { rows } = await client.query(
       `INSERT INTO users (first_name, last_name, email, supabase_user_id)
        VALUES ($1, $2, $3, $4)
+       ON CONFLICT (supabase_user_id) DO NOTHING
        RETURNING id, first_name, last_name, email, role, current_mode, status, created_at`,
       [firstName, '', email, supaUser.id]
     );
+    if (!rows.length) {
+      // Lost the race against /auth/bootstrap's own insert for this exact
+      // identity (see the comment above) -- it already created everything
+      // (row, profile, settings, with the name the person actually typed
+      // into the signup form), so just read that back instead of erroring.
+      const { rows: existing } = await client.query(
+        `SELECT id, first_name, last_name, email, role, current_mode, status, created_at
+           FROM users WHERE supabase_user_id = $1`,
+        [supaUser.id]
+      );
+      return existing[0];
+    }
     const user = rows[0];
     await client.query('INSERT INTO profiles (user_id) VALUES ($1)', [user.id]);
     await client.query(
