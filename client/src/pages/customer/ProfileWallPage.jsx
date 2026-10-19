@@ -23,8 +23,11 @@ export default function ProfileWallPage() {
 
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [editingBio, setEditingBio] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [firstNameDraft, setFirstNameDraft] = useState('');
+  const [lastNameDraft, setLastNameDraft] = useState('');
   const [bioDraft, setBioDraft] = useState('');
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -44,18 +47,34 @@ export default function ProfileWallPage() {
   // profile page for the same person.
   if (data.provider_id) return <Navigate to={`/providers/${data.provider_id}`} replace />;
 
-  const startEditingBio = () => {
+  const startEditing = () => {
+    setFirstNameDraft(data.first_name || '');
+    setLastNameDraft(data.last_name || '');
     setBioDraft(data.bio || '');
-    setEditingBio(true);
+    setFormError('');
+    setEditing(true);
   };
 
-  const saveBio = async () => {
+  const saveProfile = async () => {
+    const firstName = firstNameDraft.trim();
+    const lastName = lastNameDraft.trim();
+    // first/last name are required by the API (unlike bio, which can be
+    // cleared to an empty string) -- catch that here with a plain inline
+    // message instead of letting the PATCH 400 with no visible feedback.
+    if (!firstName || !lastName) {
+      setFormError('First and last name are both required.');
+      return;
+    }
     setSaving(true);
+    setFormError('');
     try {
-      await api.patch('/profile', { bio: bioDraft.trim() });
-      setData((d) => ({ ...d, bio: bioDraft.trim() }));
-      setUser((u) => (u ? { ...u, bio: bioDraft.trim() } : u));
-      setEditingBio(false);
+      const bio = bioDraft.trim();
+      await api.patch('/profile', { firstName, lastName, bio });
+      setData((d) => ({ ...d, first_name: firstName, last_name: lastName, bio }));
+      setUser((u) => (u ? { ...u, first_name: firstName, last_name: lastName, bio } : u));
+      setEditing(false);
+    } catch (e) {
+      setFormError(e.message || 'Could not save your profile.');
     } finally {
       setSaving(false);
     }
@@ -96,27 +115,53 @@ export default function ProfileWallPage() {
       </div>
 
       <div className="rounded-2xl border border-navy-900/8 bg-white p-5 text-left shadow-card">
-        {editingBio ? (
-          <div className="space-y-2">
-            <textarea
-              value={bioDraft}
-              onChange={(e) => setBioDraft(e.target.value)}
-              rows={4}
-              maxLength={500}
-              placeholder="Tell people a little about yourself..."
-              className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
-            />
+        {editing ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-navy-700/60 mb-1">First name</label>
+                <input
+                  type="text"
+                  value={firstNameDraft}
+                  onChange={(e) => setFirstNameDraft(e.target.value)}
+                  maxLength={80}
+                  className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-navy-700/60 mb-1">Last name</label>
+                <input
+                  type="text"
+                  value={lastNameDraft}
+                  onChange={(e) => setLastNameDraft(e.target.value)}
+                  maxLength={80}
+                  className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-700/60 mb-1">Bio</label>
+              <textarea
+                value={bioDraft}
+                onChange={(e) => setBioDraft(e.target.value)}
+                rows={4}
+                maxLength={500}
+                placeholder="Tell people a little about yourself..."
+                className="w-full rounded-lg border border-navy-900/15 px-3 py-2 text-sm outline-none focus:border-accent-400"
+              />
+            </div>
+            {formError && <p className="text-xs text-red-600">{formError}</p>}
             <div className="flex gap-2">
               <button
                 disabled={saving}
-                onClick={saveBio}
+                onClick={saveProfile}
                 className="rounded-full bg-accent-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
               <button
                 disabled={saving}
-                onClick={() => setEditingBio(false)}
+                onClick={() => setEditing(false)}
                 className="rounded-full border border-navy-900/15 px-4 py-1.5 text-sm hover:bg-navy-900/5"
               >
                 Cancel
@@ -129,7 +174,7 @@ export default function ProfileWallPage() {
               {data.bio || (isOwn ? 'Add a short bio so people know a bit about you.' : 'No bio yet.')}
             </p>
             {isOwn && (
-              <button onClick={startEditingBio} className="mt-3 text-sm font-medium text-accent-600 hover:text-accent-700">
+              <button onClick={startEditing} className="mt-3 text-sm font-medium text-accent-600 hover:text-accent-700">
                 Edit profile
               </button>
             )}
@@ -139,4 +184,3 @@ export default function ProfileWallPage() {
     </div>
   );
 }
-
