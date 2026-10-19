@@ -7,6 +7,12 @@ import Spinner from '../../components/Spinner.jsx';
 import SafeImage from '../../components/SafeImage.jsx';
 
 const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 182;
+// Launch decision (Oct 2026): Taskora Pro is hidden from the UI, so this
+// page's Pro upsell/status banner is hidden too -- showing "Upgrade to Pro"
+// with no reachable way to do it would just be confusing. Flip back to true
+// once Pro returns (see Nav.jsx and subscription.routes.js for the other
+// two places this same decision lives).
+const PRO_BOOST_ENABLED = false;
 
 export default function ProviderDashboardPage() {
   const { user } = useAuth();
@@ -61,7 +67,7 @@ export default function ProviderDashboardPage() {
           </Link>
         </div>
       )}
-      {!isPro && subStatus && (
+      {PRO_BOOST_ENABLED && !isPro && subStatus && (
         inFreeWindow ? (
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -90,7 +96,7 @@ export default function ProviderDashboardPage() {
           </div>
         )
       )}
-      {isPro && (
+      {PRO_BOOST_ENABLED && isPro && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-2">
           <span className="text-lg">⭐</span>
           <p className="text-sm font-semibold text-emerald-800">

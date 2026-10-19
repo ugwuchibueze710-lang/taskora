@@ -32,8 +32,15 @@ export const TIER_LABEL = {
  *   subquery in search.service.js, or use hasActiveProSubscription() below
  *   when you only have a plain providers row).
  */
+// Launch decision (Oct 2026): Pro is hidden from the UI (see
+// subscription.routes.js), so nobody has a way to resubscribe and recover
+// from NON_PRIORITY -- demoting providers to it while the fix is unreachable
+// would be a trap, not a business rule. Flip back to true once Pro returns.
+const PRO_BOOST_ENABLED = false;
+
 export function computeProviderTier(provider) {
   if (provider.has_active_pro) return TIER.PRIORITY;
+  if (!PRO_BOOST_ENABLED) return TIER.FREE_DISTRIBUTION;
   const publishedAt = provider.published_at ? new Date(provider.published_at).getTime() : null;
   const inFreeWindow = publishedAt != null && Date.now() - publishedAt < SIX_MONTHS_MS;
   return inFreeWindow ? TIER.FREE_DISTRIBUTION : TIER.NON_PRIORITY;

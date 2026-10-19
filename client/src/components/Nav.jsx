@@ -86,7 +86,10 @@ export default function Nav() {
               {(isProvider
                 ? [
                     ['/provider', 'Dashboard'], ['/provider/services', 'Services'], ['/provider/availability', 'Availability'],
-                    ['/provider/reviews', 'Reviews'], ['/provider/pro', 'Taskora Pro'], ['/provider/boost', 'Taskora Boost'],
+                    ['/provider/reviews', 'Reviews'],
+                    // Taskora Pro / Boost links hidden for the free launch period
+                    // (Oct 2026) -- see subscription.routes.js. Add them back here
+                    // when re-enabling: ['/provider/pro', 'Taskora Pro'], ['/provider/boost', 'Taskora Boost'],
                     ['/provider/settings', 'Settings'],
                   ]
                 : [
