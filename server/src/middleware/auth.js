@@ -1,4 +1,4 @@
-import { query } from '../lib/db.js';
+import { query, withTransaction } from '../lib/db.js';
 import { unauthorized, forbidden } from '../lib/errors.js';
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
 
@@ -40,12 +40,52 @@ async function loadAppUser(supabaseUserId) {
   return rows[0] || null;
 }
 
+// Creates a fresh app-side row (users/profiles/user_settings) for a Supabase
+// identity that authenticated successfully but has no matching `users` row
+// -- the same shape auth.routes.js's /bootstrap creates for a brand-new
+// signup. This situation is expected, not an error: Supabase Auth and our
+// own Postgres database are two separate stores, so an account can keep a
+// valid Supabase login (e.g. after our database was reset, as happened in
+// October 2026) with nothing left on our side. Rather than rejecting that
+// session and leaving the person stuck bouncing back to the login page with
+// no explanation, this transparently gives them a brand-new, empty profile
+// under the same email/password -- exactly what re-signing-up would
+// produce, minus the extra step. None of their old data is recoverable this
+// way (it no longer exists anywhere), only their ability to sign back in.
+// Deliberately a plain INSERT (no ON CONFLICT email takeover): if the email
+// already belongs to a different, unlinked row -- e.g. an admin account
+// created outside Supabase -- this throws instead of silently handing that
+// identity (and whatever role it has) to whoever just authenticated.
+async function createAppUserForSupabaseIdentity(supaUser) {
+  const email = supaUser.email;
+  const localPart = (email || '').split('@')[0] || 'Member';
+  const firstName = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `INSERT INTO users (first_name, last_name, email, supabase_user_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, first_name, last_name, email, role, current_mode, status, created_at`,
+      [firstName, '', email, supaUser.id]
+    );
+    const user = rows[0];
+    await client.query('INSERT INTO profiles (user_id) VALUES ($1)', [user.id]);
+    await client.query(
+      `INSERT INTO user_settings (user_id, default_approach_message)
+       VALUES ($1, $2)`,
+      [user.id, "Hi, I'm interested in your services and would like to discuss a project with you."]
+    );
+    return user;
+  });
+}
+
 export async function requireAuth(req, res, next) {
   try {
     const supaUser = await resolveSupabaseUser(req);
     if (!supaUser) return next(unauthorized('Please log in to continue.'));
-    const user = await loadAppUser(supaUser.id);
-    if (!user) return next(unauthorized('Session is no longer valid.'));
+    let user = await loadAppUser(supaUser.id);
+    if (!user) {
+      user = await createAppUserForSupabaseIdentity(supaUser);
+    }
     if (user.status !== 'active') return next(forbidden('This account is not active.'));
     req.user = user;
     req.supabaseUser = supaUser;
