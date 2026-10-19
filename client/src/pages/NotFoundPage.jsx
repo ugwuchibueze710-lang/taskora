@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 // blank white page with no way back except editing the URL by hand.
 export default function NotFoundPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#fbf6f1] px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#faf8ff] px-6 text-center">
       <div className="text-5xl mb-4">🧭</div>
       <h1 className="font-display text-2xl text-navy-900 mb-1">Page not found</h1>
       <p className="text-navy-700/70 max-w-sm mb-5">

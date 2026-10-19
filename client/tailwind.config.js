@@ -4,63 +4,74 @@ export default {
   theme: {
     extend: {
       colors: {
-        ember: {
-          50: '#fff4ed',
-          100: '#ffe4d4',
-          200: '#ffc5a8',
-          300: '#ff9d70',
-          400: '#ff7238',
-          500: '#f8531a',
-          600: '#e8622c',
-          700: '#c23f0f',
-          800: '#9a3312',
-          900: '#7c2c13',
-        },
-        ink: {
-          900: '#1a1512',
-          800: '#2a221d',
-          700: '#3c322b',
-        },
-        // Added for the "Dusty Blue + Peach" redesign (customer + provider
-        // pages only -- the admin panel keeps using ember/ink untouched, since
-        // it never references these new tokens, so it is unaffected).
+        // Taskora brand palette (Oct 2026 redesign) -- sampled directly from
+        // the official logo mark: indigo -> violet -> magenta ribbon, with a
+        // near-black ink for the "Task" half of the wordmark. `primary` and
+        // `accent` are the two ends of that gradient; every page that used
+        // the old dusty-blue/peach tokens picks this up automatically.
         primary: {
-          50: '#eef2f6',
-          100: '#dbe4ec',
-          200: '#b7c9d9',
-          300: '#93aec7',
-          400: '#7897b5',
-          500: '#5e7fa3',
-          600: '#4c6a8c',
-          700: '#3d5570',
-          800: '#2f4257',
-          900: '#24333f',
+          50: '#f4effe',
+          100: '#e9ddfd',
+          200: '#cdb5fa',
+          300: '#ad88f5',
+          400: '#8c5ef2',
+          500: '#6d35ee',
+          600: '#5b1fe0',
+          700: '#4a18b4',
+          800: '#3a148c',
+          900: '#2c1068',
         },
         accent: {
-          50: '#fef6f2',
-          100: '#fce8de',
-          200: '#f8d2c0',
-          300: '#f2b8a0',
-          400: '#ec9d80',
-          500: '#e37f5c',
-          600: '#c9643f',
-          700: '#a44f32',
-          800: '#7f3e28',
-          900: '#603022',
+          50: '#fef1fb',
+          100: '#fde0f7',
+          200: '#fabaef',
+          300: '#f68de3',
+          400: '#f163d4',
+          500: '#ec45c4',
+          600: '#d324a6',
+          700: '#ab1a84',
+          800: '#861668',
+          900: '#611050',
         },
         navy: {
-          900: '#1c2733',
-          800: '#28374a',
-          700: '#37485d',
+          900: '#120a24',
+          800: '#1d1236',
+          700: '#2a1b4c',
         },
+        // ember/ink power the admin panel only -- aliased onto the same
+        // palette above so the whole app (admin included) reads as one
+        // brand instead of two.
+        ember: {
+          50: '#f4effe',
+          100: '#e9ddfd',
+          200: '#cdb5fa',
+          300: '#ad88f5',
+          400: '#8c5ef2',
+          500: '#6d35ee',
+          600: '#5b1fe0',
+          700: '#4a18b4',
+          800: '#3a148c',
+          900: '#2c1068',
+        },
+        ink: {
+          900: '#120a24',
+          800: '#1d1236',
+          700: '#2a1b4c',
+        },
+      },
+      backgroundImage: {
+        // The signature diagonal sweep from the logo -- used on the logo
+        // mark itself, the splash intro, and any "hero" surface that wants
+        // the full brand treatment in one shot.
+        'brand-gradient': 'linear-gradient(135deg, #6d35ee 0%, #9333ea 50%, #ec45c4 100%)',
       },
       fontFamily: {
         display: ['"Fraunces"', 'Georgia', 'serif'],
         sans: ['"Inter"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 2px 12px rgba(26, 21, 18, 0.08)',
-        pop: '0 8px 30px rgba(26, 21, 18, 0.16)',
+        card: '0 2px 12px rgba(18, 10, 36, 0.08)',
+        pop: '0 8px 30px rgba(18, 10, 36, 0.16)',
       },
       keyframes: {
         lockSnap: {

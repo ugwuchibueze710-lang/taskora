@@ -9,7 +9,7 @@ html, body, #root {
 }
 
 body {
-  @apply bg-[#fbf6f1] text-ink-900 font-sans antialiased;
+  @apply bg-[#faf8ff] text-navy-900 font-sans antialiased;
 }
 
 .font-display {
@@ -17,7 +17,7 @@ body {
 }
 
 ::selection {
-  background: #ffd8bd;
+  background: #f5c8f0;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -25,6 +25,15 @@ body {
   height: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #e8c9b4;
+  background: #d9c3f7;
   border-radius: 999px;
+}
+
+/* Brand wordmark: "Task" in ink, "ora" in the signature gradient. */
+.taskora-wordmark-accent {
+  background: linear-gradient(135deg, #6d35ee 0%, #9333ea 45%, #ec45c4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { TaskoraIcon, TaskoraWordmark } from '../../components/TaskoraMark.jsx';
 import { supabase } from '../../lib/supabaseClient.js';
 
 export default function LoginPage() {
@@ -52,10 +53,13 @@ export default function LoginPage() {
 
   if (forgotMode) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fbf6f1] px-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#faf8ff] px-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <h1 className="font-display text-4xl text-primary-600">Taskora</h1>
+            <div className="flex flex-col items-center gap-2">
+              <TaskoraIcon size={56} />
+              <TaskoraWordmark size="text-4xl" />
+            </div>
             <p className="text-navy-700/70 mt-1">Reset your password</p>
           </div>
           {forgotSent ? (
@@ -107,10 +111,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fbf6f1] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#faf8ff] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-display text-4xl text-primary-600">Taskora</h1>
+          <div className="flex flex-col items-center gap-2">
+              <TaskoraIcon size={56} />
+              <TaskoraWordmark size="text-4xl" />
+            </div>
           <p className="text-navy-700/70 mt-1">"I need someone who can do this."</p>
         </div>
         <form onSubmit={submit} className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card space-y-3">

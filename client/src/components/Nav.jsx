@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import LocationControl from './LocationControl.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import SafeImage from './SafeImage.jsx';
+import { TaskoraBadge } from './TaskoraMark.jsx';
 
 const CUSTOMER_LINKS = [
   ['/', 'Home'],
@@ -51,7 +52,7 @@ export default function Nav() {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-navy-900/8 bg-[#fbf6f1]/95 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-navy-900/8 bg-[#faf8ff]/95 backdrop-blur">
       <div className={`mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 transition-transform ${switching ? 'scale-[0.99]' : ''}`}>
         <div ref={menuRef} className="relative">
           <button
@@ -115,8 +116,7 @@ export default function Nav() {
           )}
         </div>
 
-        <Link to={isProvider ? '/provider' : '/'} className="flex items-center gap-2 mr-2">
-          <span className="font-display text-xl font-semibold text-primary-600">Taskora</span>
+        <Link to={isProvider ? '/provider' : '/'} className="flex items-center mr-2">
           <span className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-accent-100 flex items-center justify-center text-xs font-display font-semibold text-accent-600">
             <SafeImage
               src={user.avatar_url}
@@ -134,9 +134,22 @@ export default function Nav() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-3">
           {!isProvider && <LocationControl />}
           <NotificationBell />
+          {/* The brand badge always sits top-right, icon over wordmark exactly
+              as in the logo artwork. It also doubles as the landing spot the
+              splash intro's animated "T" flies into on first load each
+              session -- see BrandIntro.jsx, which reads this element's
+              on-screen position via its id to land the handoff precisely. */}
+          <Link
+            id="taskora-nav-badge"
+            to={isProvider ? '/provider' : '/'}
+            className="flex-shrink-0 transition-transform hover:scale-105"
+            aria-label="Taskora home"
+          >
+            <TaskoraBadge iconSize={28} />
+          </Link>
         </div>
       </div>
     </header>

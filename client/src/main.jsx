@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { LocationProvider } from './context/LocationContext.jsx';
 import { CallProvider } from './context/CallContext.jsx';
 import CallOverlays from './components/CallOverlays.jsx';
+import BrandIntro from './components/BrandIntro.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')).render(
           <CallProvider>
             <App />
             <CallOverlays />
+            <BrandIntro />
           </CallProvider>
         </LocationProvider>
       </AuthProvider>
