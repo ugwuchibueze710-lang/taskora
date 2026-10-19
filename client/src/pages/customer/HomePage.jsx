@@ -91,9 +91,9 @@ export default function HomePage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="What do you need help with?"
-            className="flex-1 px-5 py-4 text-navy-900 outline-none text-base"
+            className="min-w-0 flex-1 px-5 py-4 text-navy-900 outline-none text-base"
           />
-          <button disabled={loading} className="bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 transition">
+          <button disabled={loading} className="shrink-0 bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 transition">
             {loading ? <Spinner size={18} /> : 'Search'}
           </button>
         </form>
