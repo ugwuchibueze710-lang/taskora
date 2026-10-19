@@ -8,11 +8,25 @@ import api from '../api/client.js';
  * apart into different category systems. Selection has no upper bound —
  * `selectedIds` can grow as large as the provider needs.
  */
-export default function CategoryPicker({ selectedIds, onChange }) {
+export default function CategoryPicker({ selectedIds, onChange, onCustomServiceAdded }) {
   const [groups, setGroups] = useState([]);
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(true);
+  // "No section/category matches what you typed" doesn't mean the provider
+  // can't offer it -- categories are a fixed, admin-curated list (so
+  // customer search/browse stays clean and non-duplicated), but the
+  // *specific services* under a category genuinely have no limit (see
+  // services.is_custom + POST /providers/me/services/custom). This is the
+  // one place that promise was broken: the search here only ever looked at
+  // categories, with no way to fall through to "add it as a service under
+  // a category you already picked" -- so a real, no-limit backend feature
+  // was unreachable from the exact screen that advertises "there's no
+  // limit". These three pieces of state back that fallback.
+  const [customTargetId, setCustomTargetId] = useState(null);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customError, setCustomError] = useState('');
+  const [customAdded, setCustomAdded] = useState('');
 
   useEffect(() => {
     api.get('/categories/groups').then(({ data }) => {
@@ -46,6 +60,25 @@ export default function CategoryPicker({ selectedIds, onChange }) {
 
   const toggle = (id) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  };
+
+  const addCustomService = async () => {
+    const targetId = customTargetId || selectedIds[0];
+    const name = query.trim();
+    if (!targetId || !name) return;
+    setAddingCustom(true);
+    setCustomError('');
+    setCustomAdded('');
+    try {
+      const { data } = await api.post('/providers/me/services/custom', { categoryId: targetId, name });
+      setCustomAdded(`Added "${data.service.name}" under ${byId.get(targetId)?.name || 'that category'}.`);
+      onCustomServiceAdded?.(targetId, data.service);
+      setQuery('');
+    } catch (err) {
+      setCustomError(err.message || 'Could not add that service.');
+    } finally {
+      setAddingCustom(false);
+    }
   };
 
   const remove = (id) => onChange(selectedIds.filter((x) => x !== id));
@@ -117,7 +150,51 @@ export default function CategoryPicker({ selectedIds, onChange }) {
             </div>
           );
         })}
-        {q && filteredGroups.length === 0 && <p className="px-1 py-2 text-sm text-navy-700/60">No services match "{query}".</p>}
+        {q && filteredGroups.length === 0 && (
+          <div className="space-y-2 px-1 py-2">
+            <p className="text-sm text-navy-700/60">No categories match "{query}".</p>
+            {selectedIds.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-dashed border-accent-300 bg-accent-50/50 p-3">
+                <p className="text-sm text-navy-700/70">
+                  Offer this as a specific service instead? There's no limit on these.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedIds.length > 1 ? (
+                    <select
+                      value={customTargetId || selectedIds[0]}
+                      onChange={(e) => setCustomTargetId(Number(e.target.value))}
+                      className="rounded-lg border border-navy-900/15 px-2 py-1.5 text-sm"
+                    >
+                      {selectedIds.map((id) => (
+                        <option key={id} value={id}>
+                          {byId.get(id)?.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="rounded-full bg-accent-100 px-3 py-1 text-sm font-medium text-accent-700">
+                      {byId.get(selectedIds[0])?.name}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={addingCustom}
+                    onClick={addCustomService}
+                    className="rounded-full bg-accent-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-60"
+                  >
+                    {addingCustom ? 'Adding…' : `+ Add "${query}"`}
+                  </button>
+                </div>
+                {customError && <p className="text-xs text-red-600">{customError}</p>}
+                {customAdded && <p className="text-xs text-emerald-600">{customAdded}</p>}
+              </div>
+            ) : (
+              <p className="text-xs text-navy-700/50">
+                Pick a category above first — then you can add a specific custom service like this one under it, with no limit.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

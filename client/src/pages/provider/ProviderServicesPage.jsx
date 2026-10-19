@@ -35,6 +35,18 @@ export default function ProviderServicesPage() {
     flash();
   };
 
+  // A custom service added straight from the category search (no matching
+  // category, but you've already picked one or more -- see CategoryPicker's
+  // onCustomServiceAdded) is already attached to this provider server-side
+  // the moment it's created (POST /providers/me/services/custom inserts
+  // into provider_services directly) -- this just re-loads so it actually
+  // shows up, selected, in the "Services" section below instead of only
+  // existing in the database until the next page visit.
+  const onCustomServiceAdded = async () => {
+    await load();
+    flash();
+  };
+
   const toggleService = async (svcId) => {
     const ids = me.services.some((s) => s.id === svcId) ? me.services.filter((s) => s.id !== svcId).map((s) => s.id) : [...me.services.map((s) => s.id), svcId];
     await api.put('/providers/me/services', { serviceIds: ids });
@@ -102,7 +114,11 @@ export default function ProviderServicesPage() {
       <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">
         <h2 className="font-medium mb-2">Services you offer</h2>
         <p className="text-sm text-navy-700/60 mb-2">Add or remove as many services as you genuinely offer — there's no limit.</p>
-        <CategoryPicker selectedIds={me.categories.map((c) => c.id)} onChange={saveCategoryIds} />
+        <CategoryPicker
+          selectedIds={me.categories.map((c) => c.id)}
+          onChange={saveCategoryIds}
+          onCustomServiceAdded={onCustomServiceAdded}
+        />
       </section>
 
       <section className="rounded-2xl border border-navy-900/8 bg-white p-5 shadow-card">

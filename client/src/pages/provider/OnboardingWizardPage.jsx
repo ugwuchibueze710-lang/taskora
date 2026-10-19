@@ -17,6 +17,7 @@ export default function OnboardingWizardPage() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [customServiceName, setCustomServiceName] = useState('');
+  const [customServiceCategoryId, setCustomServiceCategoryId] = useState(null);
   const [business, setBusiness] = useState({ businessName: '', description: '', businessPhone: '' });
   const [availabilityMode, setAvailabilityMode] = useState('always');
   const [slots, setSlots] = useState([]);
@@ -86,11 +87,20 @@ export default function OnboardingWizardPage() {
   };
 
   const addCustomService = async () => {
-    if (!customServiceName.trim() || !selectedCategoryIds[0]) return;
-    const { data } = await api.post('/providers/me/services/custom', { categoryId: selectedCategoryIds[0], name: customServiceName });
-    setServicesByCategory((s) => ({ ...s, [selectedCategoryIds[0]]: [...(s[selectedCategoryIds[0]] || []), data.service] }));
+    const targetId = customServiceCategoryId || selectedCategoryIds[0];
+    if (!customServiceName.trim() || !targetId) return;
+    const { data } = await api.post('/providers/me/services/custom', { categoryId: targetId, name: customServiceName });
+    setServicesByCategory((s) => ({ ...s, [targetId]: [...(s[targetId] || []), data.service] }));
     setSelectedServiceIds((ids) => [...ids, data.service.id]);
     setCustomServiceName('');
+  };
+
+  // Lets a custom service added straight from the category search (step 0 --
+  // see CategoryPicker's onCustomServiceAdded) show up here already selected,
+  // instead of the provider having to re-add the same thing on this step.
+  const onCustomServiceAddedFromPicker = (categoryId, service) => {
+    setServicesByCategory((s) => ({ ...s, [categoryId]: [...(s[categoryId] || []), service] }));
+    setSelectedServiceIds((ids) => [...ids, service.id]);
   };
 
   const publish = async () => {
@@ -134,7 +144,11 @@ export default function OnboardingWizardPage() {
             <p className="text-sm text-navy-700/60 mb-3">
               Search or browse by section, and select as many as you genuinely offer — there's no limit.
             </p>
-            <CategoryPicker selectedIds={selectedCategoryIds} onChange={setSelectedCategoryIds} />
+            <CategoryPicker
+              selectedIds={selectedCategoryIds}
+              onChange={setSelectedCategoryIds}
+              onCustomServiceAdded={onCustomServiceAddedFromPicker}
+            />
           </div>
         )}
 
@@ -157,7 +171,18 @@ export default function OnboardingWizardPage() {
                 </div>
               </div>
             ))}
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedCategoryIds.length > 1 && (
+                <select
+                  value={customServiceCategoryId || selectedCategoryIds[0]}
+                  onChange={(e) => setCustomServiceCategoryId(Number(e.target.value))}
+                  className="rounded-lg border border-navy-900/15 px-2 py-1.5 text-sm"
+                >
+                  {selectedCategoryIds.map((id) => (
+                    <option key={id} value={id}>{categories.find((c) => c.id === id)?.name}</option>
+                  ))}
+                </select>
+              )}
               <input value={customServiceName} onChange={(e) => setCustomServiceName(e.target.value)} placeholder="Add a custom service"
                 className="flex-1 rounded-lg border border-navy-900/15 px-3 py-1.5 text-sm" />
               <button onClick={addCustomService} className="rounded-lg border border-navy-900/15 px-3 py-1.5 text-sm hover:bg-navy-900/5">Add</button>
