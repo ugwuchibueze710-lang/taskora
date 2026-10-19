@@ -3,18 +3,21 @@ import { notFound, forbidden, badRequest } from '../lib/errors.js';
 import { searchProviders } from './search.service.js';
 import { createQuoteRequest } from './quote.service.js';
 
-// How many providers a single project post broadcasts to. Matches Thumbtack's
-// own "4-5 matching pros" pattern -- enough for a real comparison, not so many
-// that a provider inbox gets spammed by one project.
-const MATCH_LIMIT = 5;
-
 /**
  * "Instant Match": a customer describes a project once, and it's broadcast
- * to the top MATCH_LIMIT eligible providers for that category/location,
- * using the exact same ranking search.routes.js already uses for browsing
- * (searchProviders) -- so a project post surfaces the same providers a
- * customer would have found by searching, just without them having to
- * click into each one individually.
+ * to EVERY eligible provider for that category/location -- no cap. Everyone
+ * in range gets a shot at sending a quote, and the customer decides who she
+ * picks. Uses the exact same ranking search.routes.js already uses for
+ * browsing (searchProviders), so eligibility (category, service-area radius,
+ * availability, budget) is identical to a manual search -- a project post
+ * just removes the need to click into each result one at a time.
+ *
+ * Tier priority (active-Pro providers first, then rating -- see
+ * provider-tier.service.js) is already baked into that same shared ranking.
+ * Pro subscriptions are hidden from the UI right now, so nothing is
+ * active-Pro yet and this has no visible effect -- but the moment Pro goes
+ * live again, Pro providers in range will automatically rank first here too,
+ * with zero further change needed.
  *
  * Each matched provider gets a completely normal quote request, created by
  * the existing createQuoteRequest() (message.service.js's conversation
@@ -47,7 +50,10 @@ export async function createProjectPost({ customerId, categoryId, description, l
   );
   const post = rows[0];
 
-  const { results } = await searchProviders({ categoryId: categoryId || undefined, lat, lng, limit: MATCH_LIMIT });
+  // No cap: every eligible provider in range is matched, not just a top
+  // handful. Infinity is safe as a slice() end -- it clamps to the array's
+  // actual length instead of producing an empty result.
+  const { results } = await searchProviders({ categoryId: categoryId || undefined, lat, lng, limit: Infinity });
   // Only broadcast to providers searchProviders() could actually place a
   // real distance on -- i.e. ones with a service area configured, which is
   // what confirms they're within range rather than merely un-filtered.
