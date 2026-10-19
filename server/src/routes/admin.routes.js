@@ -153,14 +153,21 @@ router.post(
 router.post(
   '/users/:id/promote',
   requireLevel2Admin,
+  // Which tier to grant is now the level-2 admin's explicit choice at the
+  // moment they promote someone (the client shows a Level 1 / Level 2
+  // picker instead of silently always granting level 1) -- `level` is
+  // optional only so this endpoint still has a sane default if ever called
+  // without it.
+  validateBody(z.object({ level: z.union([z.literal(1), z.literal(2)]).optional() })),
   asyncHandler(async (req, res) => {
+    const level = req.body.level || 1;
     const { rows } = await query(
-      `UPDATE users SET role = 'admin', admin_level = COALESCE(admin_level, 1), updated_at = now() WHERE id = $1 RETURNING id`,
-      [req.params.id]
+      `UPDATE users SET role = 'admin', admin_level = $1, updated_at = now() WHERE id = $2 RETURNING id`,
+      [level, req.params.id]
     );
     if (!rows[0]) throw notFound('User not found.');
-    await logAdminAction({ adminUserId: req.user.id, actionType: 'promote_admin', targetType: 'user', targetId: req.params.id });
-    res.json({ success: true });
+    await logAdminAction({ adminUserId: req.user.id, actionType: 'promote_admin', targetType: 'user', targetId: req.params.id, metadata: { level } });
+    res.json({ success: true, level });
   })
 );
 
