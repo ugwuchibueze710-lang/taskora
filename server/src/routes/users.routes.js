@@ -20,7 +20,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { rows } = await query(
       `SELECT u.id, u.first_name, u.last_name, u.created_at,
-              p.avatar_url, p.bio,
+              p.avatar_url, p.cover_url, p.bio, p.headline, p.education,
               pr.id AS provider_id, pr.status AS provider_status
          FROM users u
          LEFT JOIN profiles p ON p.user_id = u.id
