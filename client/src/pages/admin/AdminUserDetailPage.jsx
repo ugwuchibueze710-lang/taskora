@@ -17,6 +17,37 @@ function Card({ children, className = '' }) {
   return <div className={`rounded-xl border border-ink-900/8 bg-white p-4 shadow-card ${className}`}>{children}</div>;
 }
 
+// Same unique, unmissable admin badge used in the Users list (AdminPage.jsx)
+// -- level 2 (gold/crown) reads as clearly different from level 1
+// (blue/shield) at a glance, right next to this account's name.
+function AdminBadge({ level }) {
+  if (level === 2) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+        👑 Level 2 Admin
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">
+      🛡️ Level 1 Admin
+    </span>
+  );
+}
+
+// A brief, unmissable pop-in confirmation that an admin action actually went
+// through -- reuses the same checkPop keyframe the avatar-upload checkmark
+// uses elsewhere, so a successful action looks and feels consistent
+// throughout the app. Auto-dismisses itself.
+function ActionToast({ message }) {
+  if (!message) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-50 animate-checkPop rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-pop">
+      ✓ {message}
+    </div>
+  );
+}
+
 function money(n) {
   return `$${Number(n).toFixed(2)}`;
 }
@@ -675,6 +706,13 @@ export default function AdminUserDetailPage() {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const [choosingLevel, setChoosingLevel] = useState(false);
+  const [toast, setToast] = useState('');
+
+  const flash = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 2200);
+  };
 
   const loadDetail = () => api.get(`/admin/users/${userId}`).then(({ data }) => setDetail(data));
   const loadSupport = () => api.get(`/admin/support/threads/${userId}`).then(({ data }) => setSupport(data));
@@ -708,12 +746,16 @@ export default function AdminUserDetailPage() {
     }
   };
 
-  const promote = async () => {
+  // Which tier to grant is now an explicit choice at the moment of
+  // promoting (see the inline Level 1 / Level 2 picker rendered below)
+  // instead of a single yes/no confirm() that always granted level 1.
+  const promote = async (level) => {
     if (!detail) return;
-    if (!confirm(`Make ${detail.user.first_name} ${detail.user.last_name} (${detail.user.email}) a basic (level 1) admin?`)) return;
     setActionBusy(true);
     try {
-      await api.post(`/admin/users/${userId}/promote`);
+      await api.post(`/admin/users/${userId}/promote`, { level });
+      setChoosingLevel(false);
+      flash(`${detail.user.first_name} ${detail.user.last_name} is now a Level ${level} admin`);
       await loadDetail();
     } finally {
       setActionBusy(false);
@@ -726,6 +768,7 @@ export default function AdminUserDetailPage() {
     setActionBusy(true);
     try {
       await api.post(`/admin/users/${userId}/demote`);
+      flash(`Admin access removed from ${detail.user.first_name} ${detail.user.last_name}`);
       await loadDetail();
     } finally {
       setActionBusy(false);
@@ -737,6 +780,7 @@ export default function AdminUserDetailPage() {
     setActionBusy(true);
     try {
       await api.post(`/admin/users/${userId}/admin-level`, { level });
+      flash(`${detail.user.first_name} ${detail.user.last_name} is now a Level ${level} admin`);
       await loadDetail();
     } finally {
       setActionBusy(false);
@@ -764,10 +808,13 @@ export default function AdminUserDetailPage() {
 
       <Card className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-display text-xl">{user.first_name} {user.last_name}</h1>
+          <h1 className="font-display text-xl flex flex-wrap items-center gap-2">
+            {user.first_name} {user.last_name}
+            {user.role === 'admin' && <AdminBadge level={user.admin_level === 2 ? 2 : 1} />}
+          </h1>
           <p className="text-xs text-ink-700/60 mt-0.5">{user.email}</p>
           <p className="text-xs text-ink-700/60 mt-1">
-            {user.role}{user.role === 'admin' && user.admin_level ? ` (L${user.admin_level})` : ''} · {user.status} · mode: {user.current_mode} · joined {new Date(user.created_at).toLocaleDateString()}
+            {user.role} · {user.status} · mode: {user.current_mode} · joined {new Date(user.created_at).toLocaleDateString()}
             {user.location_label && ` · 📍 ${user.location_label}`}
           </p>
         </div>
@@ -781,7 +828,16 @@ export default function AdminUserDetailPage() {
               level, is level-2 ("full control") only -- a level-1 admin
               never sees any of these, not just a disabled version. */}
           {isLevel2 && user.role !== 'admin' && (
-            <button disabled={actionBusy} onClick={promote} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-50">Make admin</button>
+            choosingLevel ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-1">
+                <span className="text-[11px] text-sky-700">Make admin:</span>
+                <button disabled={actionBusy} onClick={() => promote(1)} className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-sky-700 disabled:opacity-50">Level 1</button>
+                <button disabled={actionBusy} onClick={() => promote(2)} className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-600 disabled:opacity-50">Level 2</button>
+                <button disabled={actionBusy} onClick={() => setChoosingLevel(false)} className="text-[11px] text-ink-700/40 hover:text-ink-700" aria-label="Cancel">✕</button>
+              </div>
+            ) : (
+              <button disabled={actionBusy} onClick={() => setChoosingLevel(true)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-50">Make admin</button>
+            )
           )}
           {isLevel2 && user.role === 'admin' && !isSelf && (
             <>
@@ -839,6 +895,8 @@ export default function AdminUserDetailPage() {
         <JobHistoryTable title="Jobs as customer" jobs={jobsAsCustomer} otherPartyLabel="Provider" otherPartyKey="provider_name" />
         <JobHistoryTable title="Jobs as provider" jobs={jobsAsProvider} otherPartyLabel="Customer" otherPartyKey="customer_email" />
       </div>
+
+      <ActionToast message={toast} />
 
       <div>
         <p className="text-xs font-medium text-ink-700/70 mb-1">Support conversation</p>

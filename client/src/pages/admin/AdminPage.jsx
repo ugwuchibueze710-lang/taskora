@@ -519,21 +519,68 @@ function AgencySection({ title, emptyText, children }) {
   );
 }
 
+// A unique, unmissable badge wherever an admin account shows up in the
+// admin panel -- level 2 (gold/crown, "full control") reads as clearly
+// different from level 1 (blue/shield, "basic") at a glance, instead of the
+// old plain "(L2)" text suffix that was easy to miss entirely.
+function AdminBadge({ level }) {
+  if (level === 2) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+        👑 Level 2 Admin
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">
+      🛡️ Level 1 Admin
+    </span>
+  );
+}
+
+// A brief, unmissable pop-in confirmation that an admin action actually
+// went through -- "I clicked it, did it work?" shouldn't ever be a
+// question. Reuses the same checkPop keyframe the avatar-upload checkmark
+// uses elsewhere, so a successful action looks and feels consistent
+// throughout the app. Auto-dismisses itself; the caller just sets the
+// message and forgets it.
+function ActionToast({ message }) {
+  if (!message) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-50 animate-checkPop rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-pop">
+      ✓ {message}
+    </div>
+  );
+}
+
 function UsersTab() {
   const { user: currentUser } = useAuth();
   const isLevel2 = currentUser?.admin_level === 2;
   const [users, setUsers] = useState([]);
+  const [choosingId, setChoosingId] = useState(null);
+  const [toast, setToast] = useState('');
   const load = () => api.get('/admin/users').then(({ data }) => setUsers(data.users));
   useEffect(() => { load(); }, []);
+
+  const flash = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 2200);
+  };
+
   const act = async (id, action) => { await api.post(`/admin/users/${id}/${action}`); load(); };
   const remove = async (u) => {
     if (!confirm(`Permanently delete ${u.first_name} ${u.last_name} (${u.email})? This cannot be undone.`)) return;
     await api.delete(`/admin/users/${u.id}`);
+    flash(`${u.first_name} ${u.last_name} was deleted`);
     load();
   };
-  const promote = async (u) => {
-    if (!confirm(`Make ${u.first_name} ${u.last_name} (${u.email}) an admin? They'll get full, equal admin access.`)) return;
-    await api.post(`/admin/users/${u.id}/promote`);
+  // Which tier to grant is now an explicit choice at the moment of
+  // promoting, not a silent default -- clicking "Make admin" opens a small
+  // Level 1 / Level 2 picker right there instead of a plain yes/no confirm.
+  const promote = async (u, level) => {
+    await api.post(`/admin/users/${u.id}/promote`, { level });
+    setChoosingId(null);
+    flash(`${u.first_name} ${u.last_name} is now a Level ${level} admin`);
     load();
   };
   return (
@@ -545,17 +592,29 @@ function UsersTab() {
                 about them (profile, job history, earnings, edit-access
                 control) lives there, not in an inline accordion here. */}
             <Link to={`/admin/users/${u.id}`} className="text-left flex-1 min-w-0 hover:opacity-70">
-              <p className="font-medium">{u.first_name} {u.last_name} <span className="text-xs text-ink-700/50">({u.email})</span></p>
-              <p className="text-xs text-ink-700/60">{u.role}{u.role === 'admin' && u.admin_level ? ` (L${u.admin_level})` : ''} · {u.status} · mode: {u.current_mode}</p>
+              <p className="font-medium flex flex-wrap items-center gap-1.5">
+                {u.first_name} {u.last_name} <span className="text-xs text-ink-700/50">({u.email})</span>
+                {u.role === 'admin' && <AdminBadge level={u.admin_level === 2 ? 2 : 1} />}
+              </p>
+              <p className="text-xs text-ink-700/60">{u.role} · {u.status} · mode: {u.current_mode}</p>
             </Link>
-            <div className="flex gap-2 flex-wrap justify-end">
+            <div className="flex gap-2 flex-wrap justify-end items-center">
               {u.status === 'active' ? (
                 <button onClick={() => act(u.id, 'suspend')} className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50">Suspend</button>
               ) : u.status === 'suspended' ? (
                 <button onClick={() => act(u.id, 'reactivate')} className="rounded-full border border-emerald-200 px-3 py-1 text-xs text-emerald-600 hover:bg-emerald-50">Reactivate</button>
               ) : null}
               {isLevel2 && u.role !== 'admin' && (
-                <button onClick={() => promote(u)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50">Make admin</button>
+                choosingId === u.id ? (
+                  <div className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-1">
+                    <span className="text-[11px] text-sky-700">Make admin:</span>
+                    <button onClick={() => promote(u, 1)} className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-sky-700">Level 1</button>
+                    <button onClick={() => promote(u, 2)} className="rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-600">Level 2</button>
+                    <button onClick={() => setChoosingId(null)} className="text-[11px] text-ink-700/40 hover:text-ink-700" aria-label="Cancel">✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setChoosingId(u.id)} className="rounded-full border border-sky-200 px-3 py-1 text-xs text-sky-700 hover:bg-sky-50">Make admin</button>
+                )
               )}
               {isLevel2 && u.status !== 'deleted' && u.role !== 'admin' && (
                 <button onClick={() => remove(u)} className="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">Delete</button>
@@ -564,6 +623,7 @@ function UsersTab() {
           </div>
         </Card>
       ))}
+      <ActionToast message={toast} />
     </div>
   );
 }
