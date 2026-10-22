@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 // The Servio Hub splash intro. Plays once per browser tab (sessionStorage, not
 // localStorage -- "when Servio Hub is opened" means each fresh visit, not only
@@ -8,9 +7,9 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 // else is visible. Sequence: a lit 3D "S" (real three.js geometry, not a
 // flat image -- the indigo/purple/pink gradient read on it comes entirely
 // from colored lights hitting a neutral material, the same trick product
-// renders use for "liquid metal" looks) scales in, a white checkmark pops
-// into it, then "ervio Hub" slides in next to it in the brand font to spell
-// "Servio Hub". After a beat, the whole lockup shrinks and flies to wherever
+// renders use for "liquid metal" looks) scales in and settles, then
+// "ervio Hub" slides in next to it in the brand font to spell "Servio Hub".
+// After a beat, the whole lockup shrinks and flies to wherever
 // the real nav badge (#servio-nav-badge) sits on screen, handing off to it
 // seamlessly -- or to the top-right corner generically on pages (like
 // /login) that don't render a Nav at all. Click/tap anywhere, or
@@ -87,20 +86,6 @@ export default function BrandIntro() {
     const sMesh = new THREE.Mesh(new THREE.TubeGeometry(sCurve, 48, 0.95, 14, false), neutral);
     group.add(sMesh);
 
-    // Checkmark: two short white rounded boxes forming a V, sitting proud
-    // of the T's face.
-    const checkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, emissive: 0x443a55, emissiveIntensity: 0.25 });
-    const checkShort = new THREE.Mesh(new RoundedBoxGeometry(2.0, 0.62, 0.5, 2, 0.28), checkMat);
-    checkShort.position.set(-1.05, 0.15, 0.95);
-    checkShort.rotation.z = Math.PI / 4.3;
-    const checkLong = new THREE.Mesh(new RoundedBoxGeometry(3.6, 0.62, 0.5, 2, 0.28), checkMat);
-    checkLong.position.set(0.55, 0.85, 0.95);
-    checkLong.rotation.z = -Math.PI / 3.6;
-    const checkGroup = new THREE.Group();
-    checkGroup.add(checkShort, checkLong);
-    checkGroup.scale.setScalar(0.0001);
-    group.add(checkGroup);
-
     // Lighting is what actually paints the brand gradient onto the neutral
     // material: indigo from the left, magenta from the right, a thin purple
     // top-fill, plus a roaming highlight light for the "shine sweep".
@@ -120,7 +105,7 @@ export default function BrandIntro() {
 
     let raf;
     const start = performance.now();
-    const DUR = { form: reduceMotion ? 1 : 850, check: reduceMotion ? 1 : 420, checkStart: reduceMotion ? 0 : 520 };
+    const DUR = { form: reduceMotion ? 1 : 850 };
     const easeOutBack = (x) => {
       const c1 = 1.70158, c3 = c1 + 1;
       return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
@@ -133,9 +118,6 @@ export default function BrandIntro() {
       const formE = easeOutBack(formT);
       group.scale.setScalar(Math.max(0.0001, formE));
       group.rotation.y = -1.15 * (1 - clamp01(t / (DUR.form * 0.9)));
-
-      const checkT = clamp01((t - DUR.checkStart) / DUR.check);
-      checkGroup.scale.setScalar(Math.max(0.0001, easeOutBack(checkT)));
 
       indigo.intensity = 60 * clamp01(t / 400);
       magenta.intensity = 60 * clamp01(t / 400);
@@ -159,10 +141,7 @@ export default function BrandIntro() {
       cancelAnimationFrame(raf);
       renderer.dispose();
       sMesh.geometry.dispose();
-      checkShort.geometry.dispose();
-      checkLong.geometry.dispose();
       neutral.dispose();
-      checkMat.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
     };
   }, [introVisible]);
