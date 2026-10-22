@@ -6,6 +6,7 @@ import { createAgencyItem } from './agency.service.js';
 import { chatCompletion, groqConfigured } from './groq.service.js';
 import { query } from '../lib/db.js';
 import { isAgencyEnabled } from './settings.service.js';
+import { reportErrorToBdt } from '../lib/bdt-connector.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SERVER_ROOT = path.join(__dirname, '..', '..'); // .../server
@@ -20,6 +21,19 @@ const SERVER_ROOT = path.join(__dirname, '..', '..'); // .../server
  * enriches an existing item with Groq's own read of it, on demand.
  */
 export async function captureServerError(err, req) {
+  // Forwarded to Black Daddy Tech's admin backend in real time, independent
+  // of the Agency switch below -- fire-and-forget (reportErrorToBdt never
+  // throws), and a no-op whenever BDT_URL/BDT_SITE_ID/BDT_SITE_SECRET
+  // aren't set.
+  void reportErrorToBdt({
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    routePath: req.route?.path || null,
+    routeType: 'http',
+    level: 'error',
+  });
+
   try {
     // Master switch, off by default -- see settings.service.js. This
     // particular capture is free (no Groq call), but it's gated too so the

@@ -10,6 +10,7 @@ import { AppError } from './lib/errors.js';
 import { syncCategoryCatalog } from './services/category.service.js';
 import { attachCallSignaling } from './realtime/call-signaling.js';
 import { captureServerError } from './services/error-monitor.service.js';
+import { startBdtConnector, reportErrorToBdt } from './lib/bdt-connector.js';
 import { runAutoScanSweep } from './services/support-agent.service.js';
 
 import authRoutes from './routes/auth.routes.js';
@@ -111,6 +112,10 @@ app.use('/uploads', express.static(path.join(__dirname, '..', process.env.UPLOAD
 
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+// BDT's client-starter kit (and a freshly-registered BDT site, by default)
+// checks this path -- aliased here so a BDT site entry works with no field
+// changes needed in BDT Admin.
+app.get('/api/bdt/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
@@ -197,6 +202,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
 });
 
+// Crashes that never reach Express (a bad `await` outside any request
+// handler, a bug in a timer callback, etc.) skip the central error handler
+// above entirely -- these two catch everything else so BDT still hears
+// about it. unhandledRejection logs and reports but keeps running (matches
+// this app's prior behavior); uncaughtException reports then exits, since
+// Node's own guidance is not to keep running after one -- Render restarts
+// the process immediately after.
+process.on('unhandledRejection', (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  console.error('Unhandled rejection:', err);
+  void reportErrorToBdt({ message: err.message, stack: err.stack, level: 'warning', routeType: 'process' });
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  const exit = () => process.exit(1);
+  reportErrorToBdt({ message: err.message, stack: err.stack, level: 'fatal', routeType: 'process' }).then(exit, exit);
+  setTimeout(exit, 3000).unref();
+});
+
 const PORT = process.env.PORT || 4000;
 
 // Populate/refresh the category catalog from the central data file before
@@ -232,4 +256,9 @@ syncCategoryCatalog()
     setInterval(() => {
       runAutoScanSweep().catch((err) => console.error('agency auto-scan sweep failed:', err.message));
     }, 3 * 60 * 1000);
+
+    // Black Daddy Tech connector: heartbeat + crash reporting. A no-op
+    // unless BDT_URL/BDT_SITE_ID/BDT_SITE_SECRET are set (see
+    // src/lib/bdt-connector.js).
+    startBdtConnector();
   });
