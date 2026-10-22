@@ -7,7 +7,7 @@ import Spinner from '../../components/Spinner.jsx';
 import SafeImage from '../../components/SafeImage.jsx';
 
 const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 182;
-// Launch decision (Oct 2026): Taskora Pro is hidden from the UI, so this
+// Launch decision (Oct 2026): Servio Hub Pro is hidden from the UI, so this
 // page's Pro upsell/status banner is hidden too -- showing "Upgrade to Pro"
 // with no reachable way to do it would just be confusing. Flip back to true
 // once Pro returns (see Nav.jsx and subscription.routes.js for the other
@@ -86,7 +86,7 @@ export default function ProviderDashboardPage() {
             <div>
               <p className="text-sm font-semibold text-amber-800">Your free distribution period has ended</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                You're still fully active and searchable, but you now rank as a non-priority provider. Subscribe to Taskora
+                You're still fully active and searchable, but you now rank as a non-priority provider. Subscribe to Servio Hub
                 Pro for priority placement above non-priority providers in relevant searches.
               </p>
             </div>
@@ -100,7 +100,7 @@ export default function ProviderDashboardPage() {
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-2">
           <span className="text-lg">⭐</span>
           <p className="text-sm font-semibold text-emerald-800">
-            Taskora Pro is active — you have priority placement in relevant searches.
+            Servio Hub Pro is active — you have priority placement in relevant searches.
           </p>
         </div>
       )}
@@ -187,7 +187,7 @@ function useCountdown(targetIso) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// A Taskora admin can ask to finish this provider's setup for them -- but
+// A Servio Hub admin can ask to finish this provider's setup for them -- but
 // nothing actually happens until the provider approves it right here. This
 // banner is the whole of that consent step: it polls for a live request,
 // shows who's asking and how long they have to answer, and lets the
@@ -216,7 +216,7 @@ function AdminSetupBanner() {
 
   if (!grant) return null;
 
-  const adminName = [grant.admin_first_name, grant.admin_last_name].filter(Boolean).join(' ') || 'A Taskora admin';
+  const adminName = [grant.admin_first_name, grant.admin_last_name].filter(Boolean).join(' ') || 'A Servio Hub admin';
 
   const respond = async (action) => {
     setBusy(true);

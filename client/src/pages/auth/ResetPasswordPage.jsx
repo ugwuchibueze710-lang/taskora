@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient.js';
-import { TaskoraIcon, TaskoraWordmark } from '../../components/TaskoraMark.jsx';
+import { ServioIcon, ServioWordmark } from '../../components/ServioMark.jsx';
 
 // Landing page for the link in Supabase's password-reset email. Supabase's
 // client SDK detects the recovery token in the URL on load and establishes
@@ -48,8 +48,8 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex flex-col items-center gap-2">
-              <TaskoraIcon size={56} />
-              <TaskoraWordmark size="text-4xl" />
+              <ServioIcon size={56} />
+              <ServioWordmark size="text-4xl" />
             </div>
           <p className="text-navy-700/70 mt-1">Set a new password</p>
         </div>

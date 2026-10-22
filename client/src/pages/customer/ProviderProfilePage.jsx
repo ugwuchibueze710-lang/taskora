@@ -4,14 +4,14 @@ import api from '../../api/client.js';
 import StarRating from '../../components/StarRating.jsx';
 import Spinner from '../../components/Spinner.jsx';
 import SafeImage from '../../components/SafeImage.jsx';
-import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
+import { useLocation as useAppLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function ProviderProfilePage() {
   const { id } = useParams();
-  const { location } = useTaskoraLocation();
+  const { location } = useAppLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);

@@ -58,10 +58,10 @@ export async function refreshConnectStatus(providerId) {
 }
 
 // ---------------------------------------------------------------------------
-// Checkout for a job (customer pays; Taskora holds funds).
+// Checkout for a job (customer pays; Servio Hub holds funds).
 //
 // The customer is charged exactly job.price — the quoted price, no surcharge
-// added on top. Taskora's 5% fee is deducted from the PROVIDER's payout
+// added on top. Servio Hub's 5% fee is deducted from the PROVIDER's payout
 // (job.provider_amount === job.price - job.platform_fee), released at
 // releasePayoutForJob() time, so it never shows up as a separate charge here.
 // ---------------------------------------------------------------------------
@@ -165,7 +165,7 @@ export async function handleCheckoutCompleted(session) {
     await notify(job.provider_user_id, {
       type: 'job_request',
       title: 'New job request',
-      body: `A customer paid for a job: $${payment.provider_amount} after Taskora's fee.`,
+      body: `A customer paid for a job: $${payment.provider_amount} after Servio Hub's fee.`,
       data: { jobId: job.id },
       client,
     });
@@ -206,7 +206,7 @@ export async function releasePayoutForJob(jobId) {
     if (!account?.payouts_enabled) {
       // Funds stay safely held; provider must finish Connect onboarding before payout can move.
       await client.query(`UPDATE payments SET payout_status = 'failed', updated_at = now() WHERE id = $1`, [payment.id]);
-      throw conflict('This provider has not finished setting up payouts yet. Funds remain held by Taskora.');
+      throw conflict('This provider has not finished setting up payouts yet. Funds remain held by Servio Hub.');
     }
 
     const transfer = await stripe.transfers.create({

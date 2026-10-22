@@ -8,12 +8,12 @@ import { handleIncomingSupportMessage } from '../services/support-agent.service.
 
 const router = Router();
 
-// General "Contact Taskora" support channel -- always available to every
+// General "Contact Servio Hub" support channel -- always available to every
 // logged-in user regardless of customer/provider mode or job history. This
 // is deliberately separate from /api/disputes, which is job-scoped and
 // requires an active/completed job with a specific provider (see
 // dispute.routes.js). One linear thread per user; both the user's own
-// messages and Taskora's replies land in the same table, ordered by time.
+// messages and Servio Hub's replies land in the same table, ordered by time.
 router.get(
   '/messages/mine',
   requireAuth,

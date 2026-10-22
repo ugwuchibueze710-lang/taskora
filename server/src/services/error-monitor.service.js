@@ -66,7 +66,7 @@ function safeJson(v) {
 }
 
 function buildEngineerPrompt({ err, route, body, params, query: q }) {
-  return `A production error was captured on Taskora (server/src/index.js's central error handler).
+  return `A production error was captured on Servio Hub (server/src/index.js's central error handler).
 
 Route: ${route}
 Error message: ${err.message}
@@ -99,7 +99,7 @@ export async function diagnoseWithAI(item) {
     messages: [
       {
         role: 'system',
-        content: `You are helping diagnose a production error in Taskora, a Node/Express + Postgres +
+        content: `You are helping diagnose a production error in Servio Hub, a Node/Express + Postgres +
 React marketplace app. Given an error, its stack trace, and (if available) the
 relevant source snippet, write a concise root-cause diagnosis and a suggested
 fix. You cannot see the whole codebase, so be explicit about assumptions.

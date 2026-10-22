@@ -34,12 +34,12 @@ export default function ProviderProPage() {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <h1 className="font-display text-2xl">Taskora Pro</h1>
+      <h1 className="font-display text-2xl">Servio Hub Pro</h1>
 
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-600">Why become a Pro Provider?</p>
         <p className="font-display text-xl sm:text-2xl leading-snug text-navy-900">
-          Get more opportunities to earn with Taskora.
+          Get more opportunities to earn with Servio Hub.
         </p>
         <p className="text-sm text-navy-700/70 leading-relaxed max-w-lg">
           Pro Providers get increased visibility, more exposure to customers looking for services, and access to more

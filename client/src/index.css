@@ -29,8 +29,8 @@ body {
   border-radius: 999px;
 }
 
-/* Brand wordmark: "Task" in ink, "ora" in the signature gradient. */
-.taskora-wordmark-accent {
+/* Brand wordmark: the plain part in ink, the accent word in the signature gradient. */
+.brand-wordmark-accent {
   background: linear-gradient(135deg, #6d35ee 0%, #9333ea 45%, #ec45c4 100%);
   -webkit-background-clip: text;
   background-clip: text;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { TaskoraIcon, TaskoraWordmark } from '../../components/TaskoraMark.jsx';
+import { ServioIcon, ServioWordmark } from '../../components/ServioMark.jsx';
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -29,8 +29,8 @@ export default function SignupPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex flex-col items-center gap-2">
-              <TaskoraIcon size={56} />
-              <TaskoraWordmark size="text-4xl" />
+              <ServioIcon size={56} />
+              <ServioWordmark size="text-4xl" />
             </div>
           <p className="text-navy-700/70 mt-1">Your local service auction house.</p>
         </div>

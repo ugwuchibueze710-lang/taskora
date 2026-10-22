@@ -55,7 +55,7 @@ function renderInvoicePdf(filePath, data) {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    doc.fontSize(22).fillColor('#e8622c').text('Taskora', { continued: false });
+    doc.fontSize(22).fillColor('#6d35ee').text('Servio Hub', { continued: false });
     doc.fontSize(10).fillColor('#666').text('Local Service Auction House');
     doc.moveDown(1.5);
 
@@ -72,7 +72,7 @@ function renderInvoicePdf(filePath, data) {
     doc.moveDown();
 
     doc.fontSize(12).fillColor('#111').text('Service provider');
-    doc.fontSize(10).fillColor('#444').text(data.provider_name || 'Taskora Provider');
+    doc.fontSize(10).fillColor('#444').text(data.provider_name || 'Servio Hub Provider');
     doc.text(data.provider_email);
     doc.moveDown();
 
@@ -91,7 +91,7 @@ function renderInvoicePdf(filePath, data) {
     doc.text('Service price (amount charged)', 50, y);
     doc.text(`$${Number(data.amount_total).toFixed(2)}`, 450, y);
     y += 20;
-    doc.text('Taskora platform fee (5%, deducted from provider payout)', 50, y);
+    doc.text('Servio Hub platform fee (5%, deducted from provider payout)', 50, y);
     doc.text(`-$${Number(data.payment_fee).toFixed(2)}`, 450, y);
     y += 20;
     doc.moveTo(50, y).lineTo(545, y).strokeColor('#ddd').stroke();
@@ -107,7 +107,7 @@ function renderInvoicePdf(filePath, data) {
     doc.fillColor('#2e8b57').text(data.payment_status === 'succeeded' ? 'Paid' : data.payment_status, 450, y);
 
     doc.moveDown(4);
-    doc.fontSize(9).fillColor('#999').text('Thank you for using Taskora — your local service auction house.', 50, 750, { align: 'center', width: 495 });
+    doc.fontSize(9).fillColor('#999').text('Thank you for using Servio Hub — your local service auction house.', 50, 750, { align: 'center', width: 495 });
 
     doc.end();
     stream.on('finish', resolve);

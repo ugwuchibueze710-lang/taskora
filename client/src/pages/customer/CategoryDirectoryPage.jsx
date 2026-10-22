@@ -36,7 +36,7 @@ export default function CategoryDirectoryPage() {
   return (
     <div>
       <h1 className="font-display text-2xl mb-1">All services</h1>
-      <p className="text-navy-700/60 text-sm mb-4">Browse every service category on Taskora, or search for exactly what you need.</p>
+      <p className="text-navy-700/60 text-sm mb-4">Browse every service category on Servio Hub, or search for exactly what you need.</p>
 
       <input
         autoFocus

@@ -29,7 +29,7 @@ export default function ProviderBoostPage() {
 
   return (
     <div className="max-w-md space-y-4">
-      <h1 className="font-display text-2xl">Taskora Boost</h1>
+      <h1 className="font-display text-2xl">Servio Hub Boost</h1>
       <div className="rounded-2xl border border-navy-900/8 bg-white p-6 shadow-card text-center">
         <div className="text-4xl mb-2">🚀</div>
         <p className="font-display text-3xl">$100<span className="text-base text-navy-700/60">/mo</span></p>

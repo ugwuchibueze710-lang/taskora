@@ -213,7 +213,7 @@ syncCategoryCatalog()
   })
   .finally(() => {
     const server = app.listen(PORT, () => {
-      console.log(`Taskora API listening on port ${PORT}`);
+      console.log(`Servio Hub API listening on port ${PORT}`);
     });
     // In-app calling's signaling channel (offer/answer/ICE relay) rides the
     // same HTTP server as a WebSocket upgrade on /ws/calls, authenticated off

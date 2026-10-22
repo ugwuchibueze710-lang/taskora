@@ -54,7 +54,7 @@ export default function JobDetailPage() {
   };
 
   const cancel = async () => {
-    if (!confirm('Cancel this job? If you already paid, funds still held by Taskora will be refunded automatically.')) return;
+    if (!confirm('Cancel this job? If you already paid, funds still held by Servio Hub will be refunded automatically.')) return;
     setBusy(true);
     try {
       const { data } = await api.post(`/jobs/${id}/cancel`, { reason: 'Cancelled by customer' });

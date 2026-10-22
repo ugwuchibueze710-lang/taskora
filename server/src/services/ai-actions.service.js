@@ -15,13 +15,13 @@ import { getJobForUser } from './job.service.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 
 export const TOOLS = [
-  tool('search_providers', 'Search Taskora providers by category and/or keywords near the customer\'s current location.', {
-    categoryName: { type: 'string', description: 'A Taskora category name, if the request clearly matches one.' },
+  tool('search_providers', 'Search Servio Hub providers by category and/or keywords near the customer\'s current location.', {
+    categoryName: { type: 'string', description: 'A Servio Hub category name, if the request clearly matches one.' },
     keywords: { type: 'array', items: { type: 'string' }, description: 'Service keywords, e.g. ["house cleaning", "windows"]' },
     dayOfWeek: { type: 'integer', description: '0=Sunday..6=Saturday, only if the customer mentioned a day.' },
     budgetMax: { type: 'number' },
   }),
-  tool('search_categories', 'Look up Taskora categories matching a text fragment.', {
+  tool('search_categories', 'Look up Servio Hub categories matching a text fragment.', {
     text: { type: 'string' },
   }),
   tool('get_provider_profile', 'Get full public details for one provider by id.', {

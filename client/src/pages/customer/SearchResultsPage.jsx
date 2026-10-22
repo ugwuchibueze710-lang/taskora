@@ -4,14 +4,14 @@ import api from '../../api/client.js';
 import ProviderCard from '../../components/ProviderCard.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import Spinner from '../../components/Spinner.jsx';
-import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
+import { useLocation as useAppLocation } from '../../context/LocationContext.jsx';
 
 export default function SearchResultsPage() {
   const [params] = useSearchParams();
   const q = params.get('q');
   const categoryId = params.get('categoryId');
   const categoryName = params.get('categoryName');
-  const { location } = useTaskoraLocation();
+  const { location } = useAppLocation();
 
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState([]);

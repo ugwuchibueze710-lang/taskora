@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation as useTaskoraLocation } from '../context/LocationContext.jsx';
+import { useLocation as useAppLocation } from '../context/LocationContext.jsx';
 
 export default function LocationControl() {
-  const { locked, location, lock, unlock, searchPlaces, detectMyLocation } = useTaskoraLocation();
+  const { locked, location, lock, unlock, searchPlaces, detectMyLocation } = useAppLocation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);

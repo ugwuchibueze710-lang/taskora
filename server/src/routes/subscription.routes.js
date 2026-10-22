@@ -7,7 +7,7 @@ import * as SubscriptionService from '../services/subscription.service.js';
 
 const router = Router();
 
-// Launch decision (Oct 2026): Taskora Pro and Boost are hidden from the
+// Launch decision (Oct 2026): Servio Hub Pro and Boost are hidden from the
 // UI for the free launch period (hidden, not removed -- the pages, Stripe
 // wiring, and ranking logic all still exist, see provider-tier.service.js).
 // This blocks the checkout endpoints too, so a stray bookmark or direct
@@ -30,7 +30,7 @@ router.post(
   requireProvider,
   validateBody(z.object({ interval: z.enum(['month', 'year']).default('month') })),
   asyncHandler(async (req, res) => {
-    if (!PRO_BOOST_ENABLED) throw new AppError('Taskora Pro is not available right now -- Taskora is free for everyone during launch.', 503, 'FEATURE_DISABLED');
+    if (!PRO_BOOST_ENABLED) throw new AppError('Servio Hub Pro is not available right now -- Servio Hub is free for everyone during launch.', 503, 'FEATURE_DISABLED');
     const origin = process.env.CLIENT_ORIGIN?.split(',')[0] || 'http://localhost:5173';
     const url = await SubscriptionService.startCheckout('pro', {
       providerId: req.user.provider_id,
@@ -48,7 +48,7 @@ router.post(
   requireAuth,
   requireProvider,
   asyncHandler(async (req, res) => {
-    if (!PRO_BOOST_ENABLED) throw new AppError('Taskora Boost is not available right now -- Taskora is free for everyone during launch.', 503, 'FEATURE_DISABLED');
+    if (!PRO_BOOST_ENABLED) throw new AppError('Servio Hub Boost is not available right now -- Servio Hub is free for everyone during launch.', 503, 'FEATURE_DISABLED');
     const origin = process.env.CLIENT_ORIGIN?.split(',')[0] || 'http://localhost:5173';
     const url = await SubscriptionService.startCheckout('boost', {
       providerId: req.user.provider_id,

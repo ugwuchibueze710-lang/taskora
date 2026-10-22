@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import LocationControl from './LocationControl.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import SafeImage from './SafeImage.jsx';
-import { TaskoraBadge } from './TaskoraMark.jsx';
+import { ServioBadge } from './ServioMark.jsx';
 
 const CUSTOMER_LINKS = [
   ['/', 'Home'],
@@ -87,9 +87,9 @@ export default function Nav() {
                 ? [
                     ['/provider', 'Dashboard'], ['/provider/services', 'Services'], ['/provider/availability', 'Availability'],
                     ['/provider/reviews', 'Reviews'],
-                    // Taskora Pro / Boost links hidden for the free launch period
+                    // Servio Hub Pro / Boost links hidden for the free launch period
                     // (Oct 2026) -- see subscription.routes.js. Add them back here
-                    // when re-enabling: ['/provider/pro', 'Taskora Pro'], ['/provider/boost', 'Taskora Boost'],
+                    // when re-enabling: ['/provider/pro', 'Servio Hub Pro'], ['/provider/boost', 'Servio Hub Boost'],
                     ['/provider/settings', 'Settings'],
                   ]
                 : [
@@ -150,12 +150,12 @@ export default function Nav() {
               session -- see BrandIntro.jsx, which reads this element's
               on-screen position via its id to land the handoff precisely. */}
           <Link
-            id="taskora-nav-badge"
+            id="servio-nav-badge"
             to={isProvider ? '/provider' : '/'}
             className="flex-shrink-0 transition-transform hover:scale-105"
-            aria-label="Taskora home"
+            aria-label="Servio Hub home"
           >
-            <TaskoraBadge iconSize={28} />
+            <ServioBadge iconSize={28} />
           </Link>
         </div>
       </div>

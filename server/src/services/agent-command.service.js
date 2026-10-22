@@ -31,9 +31,9 @@ import { createAgencyItem, resolveOpenEscalationsForUser } from './agency.servic
 //      things up and told to use them.
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are Agency, Taskora's admin operations assistant. You are talking
-directly to a logged-in Taskora admin through their dashboard's command box, not to a
-customer. Taskora is a local-services marketplace (customers hire providers for jobs).
+const SYSTEM_PROMPT = `You are Agency, Servio Hub's admin operations assistant. You are talking
+directly to a logged-in Servio Hub admin through their dashboard's command box, not to a
+customer. Servio Hub is a local-services marketplace (customers hire providers for jobs).
 
 You can do essentially anything the admin could do by clicking through the dashboard
 themselves: look up users, providers, jobs, payments, disputes, reviews and support
@@ -197,7 +197,7 @@ async function replyToSupport({ userId, message }, ctx) {
   const { rows: userRows } = await query('SELECT id FROM users WHERE id = $1', [userId]);
   if (!userRows[0]) return { error: 'No user with that id.' };
   const { rows } = await query(`INSERT INTO support_messages (user_id, sender, body) VALUES ($1, 'admin', $2) RETURNING id`, [userId, message]);
-  await notify(userId, { type: 'support_reply', title: 'Taskora Support replied', body: message.slice(0, 140), data: {} });
+  await notify(userId, { type: 'support_reply', title: 'Servio Hub Support replied', body: message.slice(0, 140), data: {} });
   await logAdminAction({ adminUserId: ctx.adminUser.id, actionType: 'agent_command:support_reply', targetType: 'user', targetId: userId, details: { messageId: rows[0].id } });
   await resolveOpenEscalationsForUser(userId, ctx.adminUser.id);
   return { success: true, sent: message };

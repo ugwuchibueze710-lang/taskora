@@ -5,11 +5,11 @@ import { notify } from './notification.service.js';
 // Launch decision (Oct 2026): zeroed out so providers keep 100% of every
 // job payment -- the only money moving during the free launch period is
 // the customer-to-provider payment itself, nothing taken off the top.
-// Was 0.05 (Taskora's 5% service fee); flip it back to reintroduce a cut.
+// Was 0.05 (Servio Hub's 5% service fee); flip it back to reintroduce a cut.
 export const PLATFORM_FEE_RATE = 0;
 
 // `price` is exactly what the customer is charged — no surcharge added on
-// top. Taskora's fee is a cut taken OUT of that before the provider is paid,
+// top. Servio Hub's fee is a cut taken OUT of that before the provider is paid,
 // so providerAmount === price - platformFee (never price itself).
 export function computeFeeSplit(price) {
   const total = Math.round(Number(price) * 100) / 100; // what the customer is actually charged — the quoted price, unchanged

@@ -55,7 +55,7 @@ export async function parseSearchIntent(text, categories) {
   }
 
   const categoryList = categories.map((c) => c.name).join(', ');
-  const system = `You are Taskora's search interpreter for a local services marketplace.
+  const system = `You are Servio Hub's search interpreter for a local services marketplace.
 Given a customer's free-text request, extract structured search filters as JSON.
 Only choose a category from this exact list (or null if none clearly fits): ${categoryList}.
 Never invent providers, prices, availability, or ratings — you are only extracting search intent.

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { TaskoraIcon, TaskoraWordmark } from '../../components/TaskoraMark.jsx';
+import { ServioIcon, ServioWordmark } from '../../components/ServioMark.jsx';
 import { supabase } from '../../lib/supabaseClient.js';
 
 export default function LoginPage() {
@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // "Forgot password?" is also how anyone migrated from Taskora's old login
+  // "Forgot password?" is also how anyone migrated from Servio Hub's old login
   // system sets their first real Supabase password -- their account already
   // exists (linked by email during the migration), it just has no password
   // Supabase knows about yet, so a normal login always fails for them until
@@ -57,8 +57,8 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div className="flex flex-col items-center gap-2">
-              <TaskoraIcon size={56} />
-              <TaskoraWordmark size="text-4xl" />
+              <ServioIcon size={56} />
+              <ServioWordmark size="text-4xl" />
             </div>
             <p className="text-navy-700/70 mt-1">Reset your password</p>
           </div>
@@ -115,8 +115,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex flex-col items-center gap-2">
-              <TaskoraIcon size={56} />
-              <TaskoraWordmark size="text-4xl" />
+              <ServioIcon size={56} />
+              <ServioWordmark size="text-4xl" />
             </div>
           <p className="text-navy-700/70 mt-1">"I need someone who can do this."</p>
         </div>
@@ -144,7 +144,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-navy-700/70">
-          New to Taskora? <Link to="/signup" className="text-accent-600 font-medium hover:underline">Create an account</Link>
+          New to Servio Hub? <Link to="/signup" className="text-accent-600 font-medium hover:underline">Create an account</Link>
         </p>
       </div>
     </div>

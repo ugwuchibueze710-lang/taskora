@@ -1,5 +1,5 @@
 // ============================================================================
-// THE single source of truth for Taskora's service category catalog.
+// THE single source of truth for Servio Hub's service category catalog.
 //
 // This file is the ONLY place category names, groupings, descriptions, and
 // search-alias keywords are defined. Everything else — the home page, the

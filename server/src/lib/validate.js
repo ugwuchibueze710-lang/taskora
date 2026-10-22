@@ -15,6 +15,6 @@ export function validateBody(schema) {
 }
 
 export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email address.');
-// Intentionally permissive: Taskora does not enforce password complexity rules.
+// Intentionally permissive: Servio Hub does not enforce password complexity rules.
 // "1234" must be accepted. We only require it not be empty, capped at a sane max.
 export const passwordSchema = z.string().min(1, 'Password is required.').max(200);

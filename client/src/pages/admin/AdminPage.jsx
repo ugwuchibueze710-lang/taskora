@@ -93,7 +93,7 @@ function AnalyticsTab() {
       </div>
 
       <div>
-        <h3 className="font-medium mb-2">What Taskora actually keeps, by source (lifetime)</h3>
+        <h3 className="font-medium mb-2">What Servio Hub actually keeps, by source (lifetime)</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card><p className="font-display text-xl">{money(rb.platformCommission)}</p><p className="text-xs text-ink-700/60 mt-1">Platform commission (job fee)</p></Card>
           <Card><p className="font-display text-xl">{money(rb.proMonthly)}</p><p className="text-xs text-ink-700/60 mt-1">Pro subscriptions — monthly</p></Card>
@@ -1043,7 +1043,7 @@ function DisputesTab() {
   );
 }
 
-// General "Contact Taskora" support inbox -- separate from Disputes above,
+// General "Contact Servio Hub" support inbox -- separate from Disputes above,
 // which are job-scoped reports. Every logged-in user (customer or provider
 // mode) can message here at any time; this is where those land.
 function SupportTab({ openUserId, onOpened }) {
@@ -1263,7 +1263,7 @@ function SiteSettingsTab() {
   return (
     <div className="max-w-xl space-y-4">
       <p className="text-sm text-ink-700/60">
-        Changes here go live on the home page immediately -- no deploy needed. Leave a field blank to fall back to Taskora's
+        Changes here go live on the home page immediately -- no deploy needed. Leave a field blank to fall back to Servio Hub's
         built-in default copy/behavior.
       </p>
 
@@ -1295,7 +1295,7 @@ function SiteSettingsTab() {
         <input
           value={bannerMessage}
           onChange={(e) => setBannerMessage(e.target.value)}
-          placeholder="e.g. Taskora is free to use right now!"
+          placeholder="e.g. Servio Hub is free to use right now!"
           className="w-full rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm"
         />
       </Card>
@@ -1303,7 +1303,7 @@ function SiteSettingsTab() {
       <Card>
         <h2 className="font-medium mb-1">Featured categories (homepage) -- pick up to 6</h2>
         <p className="mb-2 text-xs text-ink-700/60">
-          Leave empty to use Taskora's automatic per-city trending list instead.
+          Leave empty to use Servio Hub's automatic per-city trending list instead.
         </p>
         <div className="flex flex-wrap gap-1.5">
           {categories.map((c) => (

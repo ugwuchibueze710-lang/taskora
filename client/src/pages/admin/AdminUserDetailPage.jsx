@@ -885,7 +885,7 @@ export default function AdminUserDetailPage() {
             <MiniStat label="Pending payout" value={money(earnings.summary.pending)} />
             <MiniStat label="Released to provider" value={money(earnings.summary.released)} />
             <MiniStat label="Gross charged (Stripe)" value={money(earnings.summary.gross)} />
-            <MiniStat label="Taskora fees kept" value={money(earnings.summary.fees_paid)} />
+            <MiniStat label="Servio Hub fees kept" value={money(earnings.summary.fees_paid)} />
           </div>
           <PayoutHistoryTable payouts={earnings.payouts} />
         </div>

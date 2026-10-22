@@ -12,7 +12,7 @@ import { isAgencyEnabled, isAutoScanEnabled } from './settings.service.js';
 // promise a future action -- see gatherCustomerContext below, which only
 // ever SELECTs, and the rule in the prompt to escalate anything that needs
 // a decision rather than a fact.
-const FAQ_POLICY = `You triage a single incoming customer-support message for Taskora, a local
+const FAQ_POLICY = `You triage a single incoming customer-support message for Servio Hub, a local
 services marketplace. You're given the customer's own account context (their recent jobs,
 payments, disputes) as read-only, factual data, plus their message. Decide whether it's safe
 to auto-answer with a short, warm reply, or whether it needs a human.
@@ -156,7 +156,7 @@ export async function handleIncomingSupportMessage({ userId, userMessageId, body
     );
     await notify(userId, {
       type: 'support_reply',
-      title: 'Taskora Support replied',
+      title: 'Servio Hub Support replied',
       body: decision.reply.slice(0, 140),
       data: {},
     });

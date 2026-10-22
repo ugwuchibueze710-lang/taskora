@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../../api/client.js';
 import CategoryCard from '../../components/CategoryCard.jsx';
 import Spinner from '../../components/Spinner.jsx';
-import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
+import { useLocation as useAppLocation } from '../../context/LocationContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function HomePage() {
@@ -17,7 +17,7 @@ export default function HomePage() {
   const [featuredIsDemandDriven, setFeaturedIsDemandDriven] = useState(false);
   const [featuredIsAdminPinned, setFeaturedIsAdminPinned] = useState(false);
   const [siteSettings, setSiteSettings] = useState({});
-  const { locked, location } = useTaskoraLocation();
+  const { locked, location } = useAppLocation();
   const navigate = useNavigate();
 
   // Level-2-admin-controlled homepage content (Site Settings panel) --
@@ -102,7 +102,7 @@ export default function HomePage() {
         </h1>
         <p className="text-white/90 mb-6">
           {locked
-            ? `Searching near ${location?.label || 'your location'}. Tell Taskora what you need and we'll find the right local pro.`
+            ? `Searching near ${location?.label || 'your location'}. Tell Servio Hub what you need and we'll find the right local pro.`
             : siteSettings.hero_subtitle || 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
         </p>
         <form onSubmit={runSearch} className="mx-auto flex max-w-xl overflow-hidden rounded-full bg-white shadow-lg">

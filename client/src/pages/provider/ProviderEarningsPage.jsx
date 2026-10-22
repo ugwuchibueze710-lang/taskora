@@ -45,7 +45,7 @@ export default function ProviderEarningsPage() {
       {!account?.payouts_enabled && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="font-medium text-amber-800">Set up payouts to get paid</p>
-          <p className="text-sm text-amber-700/80 mt-1">Connect your bank account through Stripe so Taskora can pay you after each confirmed job.</p>
+          <p className="text-sm text-amber-700/80 mt-1">Connect your bank account through Stripe so Servio Hub can pay you after each confirmed job.</p>
           {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
           <button disabled={busy} onClick={connect} className="mt-2 rounded-full bg-navy-900 px-5 py-2 text-sm font-semibold text-white hover:bg-navy-800 disabled:opacity-60">
             {busy ? 'Redirecting…' : 'Set Up Payouts with Stripe'}
@@ -54,10 +54,10 @@ export default function ProviderEarningsPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Pending (held by Taskora)" value={earnings.summary.pending} />
+        <Stat label="Pending (held by Servio Hub)" value={earnings.summary.pending} />
         <Stat label="Released to you" value={earnings.summary.released} />
         <Stat label="Total service volume" value={earnings.summary.gross} />
-        <Stat label="Taskora fees paid" value={earnings.summary.fees_paid} />
+        <Stat label="Servio Hub fees paid" value={earnings.summary.fees_paid} />
       </div>
 
       <div>

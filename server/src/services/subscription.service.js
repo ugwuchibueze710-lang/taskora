@@ -9,7 +9,7 @@ function requireStripe() {
   return stripe;
 }
 
-// Taskora Pro offers monthly and yearly billing; Boost (a separate, unrelated
+// Servio Hub Pro offers monthly and yearly billing; Boost (a separate, unrelated
 // feature) only ever bills monthly. Each interval maps to its own real Stripe
 // Price object — created and priced entirely in the Stripe Dashboard, never
 // invented here.
@@ -23,7 +23,7 @@ export async function startCheckout(type, { providerId, providerEmail, successUr
   const stripe = requireStripe();
   const priceId = process.env[PRICE_ENV[type][interval]];
   if (!priceId) {
-    const label = type === 'pro' ? 'Taskora Pro' : 'Taskora Boost';
+    const label = type === 'pro' ? 'Servio Hub Pro' : 'Servio Hub Boost';
     throw badRequest(`${label} (${interval === 'year' ? 'yearly' : 'monthly'}) is not configured yet.`);
   }
 
@@ -108,7 +108,7 @@ export async function handleSubscriptionEvent(type, subscription) {
   if (providerRows[0]) {
     await notify(providerRows[0].user_id, {
       type: `${type}_status`,
-      title: isActive ? `Taskora ${type === 'pro' ? 'Pro' : 'Boost'} is active` : `Taskora ${type === 'pro' ? 'Pro' : 'Boost'} status changed`,
+      title: isActive ? `Servio Hub ${type === 'pro' ? 'Pro' : 'Boost'} is active` : `Servio Hub ${type === 'pro' ? 'Pro' : 'Boost'} status changed`,
       body: isActive ? 'Your subscription is active.' : `Subscription status: ${normalizedStatus}.`,
     });
   }

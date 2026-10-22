@@ -59,7 +59,7 @@ export default function QuoteRequestCard({ quoteRequestId, body }) {
                 className="w-full rounded-lg border border-navy-900/15 px-2 py-1.5 text-sm" />
               {Number(form.price) > 0 && (
                 <p className="text-xs text-navy-700/60">
-                  The customer pays ${Number(form.price).toFixed(2)}. After Taskora's 5% fee, you'll receive $
+                  The customer pays ${Number(form.price).toFixed(2)}. After Servio Hub's 5% fee, you'll receive $
                   {(Number(form.price) * 0.95).toFixed(2)}.
                 </p>
               )}

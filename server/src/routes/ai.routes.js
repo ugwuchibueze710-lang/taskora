@@ -101,12 +101,12 @@ router.post(
   asyncHandler(async (req, res) => {
     if (!groqConfigured()) {
       return res.json({
-        reply: "Taskora's AI assistant isn't configured yet — you can still use the search bar and browse categories directly.",
+        reply: "Servio Hub's AI assistant isn't configured yet — you can still use the search bar and browse categories directly.",
         actions: [],
       });
     }
 
-    const systemPrompt = `You are Taskora's assistant inside a local services marketplace. You help customers find and hire real local
+    const systemPrompt = `You are Servio Hub's assistant inside a local services marketplace. You help customers find and hire real local
 service providers. Rules you must always follow:
 - Never invent providers, prices, availability, or ratings — only state facts returned by your tools.
 - You have NO ability to charge any payment. If the user wants to pay, tell them you'll take them to the real payment screen
@@ -136,7 +136,7 @@ Current user: ${req.user ? `${req.user.first_name}, logged in, mode=${req.user.c
         // up through asyncHandler into an opaque 500 for the user.
         console.error('Groq assistant call failed:', err.message);
         return res.json({
-          reply: "Taskora's AI assistant is temporarily unavailable — you can still use the search bar and browse categories directly.",
+          reply: "Servio Hub's AI assistant is temporarily unavailable — you can still use the search bar and browse categories directly.",
           actions: actionsTaken,
         });
       }

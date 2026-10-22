@@ -368,8 +368,8 @@ router.post(
     );
     await notify(providerRows[0].user_id, {
       type: 'admin_setup_request',
-      title: 'Taskora wants to help finish your profile setup',
-      body: `${req.user.first_name} from Taskora is asking permission to edit your provider profile for you. Approve or decline from your dashboard -- this expires in 1 hour if you don't respond.`,
+      title: 'Servio Hub wants to help finish your profile setup',
+      body: `${req.user.first_name} from Servio Hub is asking permission to edit your provider profile for you. Approve or decline from your dashboard -- this expires in 1 hour if you don't respond.`,
       data: { grantId: rows[0].id },
     });
     await logAdminAction({
@@ -945,7 +945,7 @@ router.get(
   })
 );
 
-// ---- Support inbox (general "Contact Taskora" messages -- see
+// ---- Support inbox (general "Contact Servio Hub" messages -- see
 // support.routes.js) -- distinct from Disputes below, which are job-scoped
 // reports requiring an active/completed job with a specific provider.
 // ----
@@ -991,7 +991,7 @@ router.post(
     );
     await notify(req.params.userId, {
       type: 'support_reply',
-      title: 'Taskora Support replied',
+      title: 'Servio Hub Support replied',
       body: req.body.body.slice(0, 140),
       data: {},
     });

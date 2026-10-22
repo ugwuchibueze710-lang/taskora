@@ -101,7 +101,7 @@ export async function acceptQuote({ quoteId, customerId }) {
     }
 
     // jobs.price is exactly what the customer will be charged (the provider's
-    // quoted price, unchanged). Taskora's 5% fee is deducted from the
+    // quoted price, unchanged). Servio Hub's 5% fee is deducted from the
     // provider's payout at acceptance time — see computeFeeSplit — so
     // provider_amount is already price minus that fee, never price itself.
     const { total, platformFee, providerAmount } = computeFeeSplit(quote.price);

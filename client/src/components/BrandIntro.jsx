@@ -2,16 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
-// The Taskora splash intro. Plays once per browser tab (sessionStorage, not
-// localStorage -- "when Taskora is opened" means each fresh visit, not only
+// The Servio Hub splash intro. Plays once per browser tab (sessionStorage, not
+// localStorage -- "when Servio Hub is opened" means each fresh visit, not only
 // the very first one ever) at the very start of app load, before anything
-// else is visible. Sequence: a lit 3D "T" (real three.js geometry, not a
+// else is visible. Sequence: a lit 3D "S" (real three.js geometry, not a
 // flat image -- the indigo/purple/pink gradient read on it comes entirely
 // from colored lights hitting a neutral material, the same trick product
 // renders use for "liquid metal" looks) scales in, a white checkmark pops
-// into it, then "askora" slides in next to it in the brand font to spell
-// "Taskora". After a beat, the whole lockup shrinks and flies to wherever
-// the real nav badge (#taskora-nav-badge) sits on screen, handing off to it
+// into it, then "ervio Hub" slides in next to it in the brand font to spell
+// "Servio Hub". After a beat, the whole lockup shrinks and flies to wherever
+// the real nav badge (#servio-nav-badge) sits on screen, handing off to it
 // seamlessly -- or to the top-right corner generically on pages (like
 // /login) that don't render a Nav at all. Click/tap anywhere, or
 // prefers-reduced-motion, skips straight to the handoff.
@@ -20,7 +20,7 @@ export default function BrandIntro() {
   const wrapRef = useRef(null);
   const [phase, setPhase] = useState(() => {
     try {
-      if (sessionStorage.getItem('taskora_intro_seen')) return 'done';
+      if (sessionStorage.getItem('servio_intro_seen')) return 'done';
     } catch {
       /* sessionStorage unavailable (private mode etc) -- just play it */
     }
@@ -31,7 +31,7 @@ export default function BrandIntro() {
   useEffect(() => {
     if (phase === 'enter') {
       try {
-        sessionStorage.setItem('taskora_intro_seen', '1');
+        sessionStorage.setItem('servio_intro_seen', '1');
       } catch {
         /* best effort only */
       }
@@ -72,11 +72,20 @@ export default function BrandIntro() {
       clearcoatRoughness: 0.25,
     });
 
-    const bar = new THREE.Mesh(new RoundedBoxGeometry(6.6, 2.2, 1.3, 4, 0.5), neutral);
-    bar.position.set(0, 1.9, 0);
-    const stem = new THREE.Mesh(new RoundedBoxGeometry(2.2, 5.0, 1.3, 4, 0.45), neutral);
-    stem.position.set(0, -0.9, 0);
-    group.add(bar, stem);
+    // A smooth tube swept along an S-curve -- the 3D counterpart to the flat
+    // "S" ribbon path in ServioMark.jsx's icon. Built as one continuous shape
+    // (rather than stacked boxes like the old T) since an S reads as a curve.
+    const sCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(1.55, 2.65, 0),
+      new THREE.Vector3(-1.3, 2.9, 0),
+      new THREE.Vector3(-1.9, 1.0, 0),
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(1.9, -1.0, 0),
+      new THREE.Vector3(1.3, -2.9, 0),
+      new THREE.Vector3(-1.55, -2.65, 0),
+    ]);
+    const sMesh = new THREE.Mesh(new THREE.TubeGeometry(sCurve, 48, 0.95, 14, false), neutral);
+    group.add(sMesh);
 
     // Checkmark: two short white rounded boxes forming a V, sitting proud
     // of the T's face.
@@ -149,8 +158,7 @@ export default function BrandIntro() {
     return () => {
       cancelAnimationFrame(raf);
       renderer.dispose();
-      bar.geometry.dispose();
-      stem.geometry.dispose();
+      sMesh.geometry.dispose();
       checkShort.geometry.dispose();
       checkLong.geometry.dispose();
       neutral.dispose();
@@ -191,7 +199,7 @@ export default function BrandIntro() {
   // smoothly from the start.
   useLayoutEffect(() => {
     if (phase !== 'exit') return undefined;
-    const target = document.getElementById('taskora-nav-badge');
+    const target = document.getElementById('servio-nav-badge');
     const wrap = wrapRef.current;
     if (wrap) {
       const from = wrap.getBoundingClientRect();
@@ -245,7 +253,7 @@ export default function BrandIntro() {
             transform: phase === 'wordmark' || phase === 'hold' ? 'translateX(0)' : 'translateX(-18px)',
           }}
         >
-          <span className="taskora-wordmark-accent">askora</span>
+          <span className="brand-wordmark-accent">ervio Hub</span>
         </span>
       </div>
     </div>

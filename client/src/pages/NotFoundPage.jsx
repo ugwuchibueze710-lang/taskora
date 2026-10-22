@@ -16,7 +16,7 @@ export default function NotFoundPage() {
         to="/"
         className="rounded-full bg-accent-500 px-5 py-2 text-sm font-semibold text-white hover:bg-accent-600"
       >
-        Back to Taskora
+        Back to Servio Hub
       </Link>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/client.js';
-import { useLocation as useTaskoraLocation } from '../../context/LocationContext.jsx';
+import { useLocation as useAppLocation } from '../../context/LocationContext.jsx';
 import Spinner from '../../components/Spinner.jsx';
 
 // "Post a project" -- Instant Match. A brand-new way to reach providers,
@@ -13,7 +13,7 @@ import Spinner from '../../components/Spinner.jsx';
 export default function NewProjectPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { location } = useTaskoraLocation();
+  const { location } = useAppLocation();
 
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState(params.get('categoryId') || '');
