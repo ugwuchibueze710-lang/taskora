@@ -59,8 +59,11 @@ export default function QuoteRequestCard({ quoteRequestId, body }) {
                 className="w-full rounded-lg border border-navy-900/15 px-2 py-1.5 text-sm" />
               {Number(form.price) > 0 && (
                 <p className="text-xs text-navy-700/60">
-                  The customer pays ${Number(form.price).toFixed(2)}. After Servio Hub's 5% fee, you'll receive $
-                  {(Number(form.price) * 0.95).toFixed(2)}.
+                  {/* No platform cut during the free-launch period (PLATFORM_FEE_RATE
+                      is 0 in job.service.js) -- showing a hardcoded "5% fee" here would
+                      misstate what the provider actually receives. */}
+                  The customer pays ${Number(form.price).toFixed(2)}. Servio Hub isn't taking a cut right now, so
+                  you'll receive the full ${Number(form.price).toFixed(2)}.
                 </p>
               )}
               <textarea placeholder="Description" value={form.description}

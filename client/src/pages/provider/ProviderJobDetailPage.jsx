@@ -41,7 +41,12 @@ export default function ProviderJobDetailPage() {
         <p className="text-navy-700/80">{job.service_description}</p>
         <div className="pt-2 border-t border-navy-900/8 text-sm space-y-1">
           <div className="flex justify-between text-navy-700/60"><span>Customer's total</span><span>${Number(job.price).toFixed(2)}</span></div>
-          <div className="flex justify-between text-navy-700/60"><span>Servio Hub platform fee (5%)</span><span>-${job.platform_fee}</span></div>
+          {/* Hidden when there's no actual fee (free-launch period) -- a hardcoded
+              "5%" label next to a $0.00 deduction would contradict what's really
+              happening. Reappears automatically once a real platform_fee comes back. */}
+          {Number(job.platform_fee) > 0 && (
+            <div className="flex justify-between text-navy-700/60"><span>Servio Hub platform fee</span><span>-${job.platform_fee}</span></div>
+          )}
           <div className="flex justify-between font-semibold"><span>You receive</span><span>${job.provider_amount}</span></div>
         </div>
       </div>

@@ -35,7 +35,7 @@ export async function generateInvoiceForJob(jobId) {
   if (!data) throw new Error('Cannot generate an invoice: job/payment data not found.');
 
   const { rows: seqRows } = await query("SELECT nextval('invoice_number_seq') AS n");
-  const invoiceNumber = `TSK-${new Date().getFullYear()}-${seqRows[0].n}`;
+  const invoiceNumber = `SH-${new Date().getFullYear()}-${seqRows[0].n}`;
   const filename = `${invoiceNumber}.pdf`;
   const filePath = path.join(invoiceDir, filename);
 
@@ -91,9 +91,15 @@ function renderInvoicePdf(filePath, data) {
     doc.text('Service price (amount charged)', 50, y);
     doc.text(`$${Number(data.amount_total).toFixed(2)}`, 450, y);
     y += 20;
-    doc.text('Servio Hub platform fee (5%, deducted from provider payout)', 50, y);
-    doc.text(`-$${Number(data.payment_fee).toFixed(2)}`, 450, y);
-    y += 20;
+    // No fee line during the free-launch period -- a "5%" label next to a
+    // $0.00 deduction would misstate what's actually being charged. Comes
+    // back automatically once PLATFORM_FEE_RATE is turned back on.
+    const feeAmount = Number(data.payment_fee);
+    if (feeAmount > 0) {
+      doc.text('Servio Hub platform fee (deducted from provider payout)', 50, y);
+      doc.text(`-$${feeAmount.toFixed(2)}`, 450, y);
+      y += 20;
+    }
     doc.moveTo(50, y).lineTo(545, y).strokeColor('#ddd').stroke();
     y += 10;
     doc.fontSize(11).fillColor('#111').text('Total charged to customer', 50, y);
