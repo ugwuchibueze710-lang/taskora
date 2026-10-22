@@ -10,7 +10,7 @@ export default function AdminPage() {
   // Site Settings ("full control" over homepage UI) is level-2 only -- a
   // level-1 ("basic") admin never even sees the tab exists, not just a
   // disabled version of it.
-  const TABS = user?.admin_level === 2 ? [...BASE_TABS, 'Site Settings'] : BASE_TABS;
+  const TABS = user?.admin_level === 2 ? [...BASE_TABS, 'Site Settings', 'IT'] : BASE_TABS;
   const [tab, setTab] = useState('Analytics');
   // Polled independently of the Agency tab itself so the badge shows up
   // ("every fix will be notified there") even while an admin is sitting on
@@ -59,6 +59,7 @@ export default function AdminPage() {
       {tab === 'Reviews' && <ReviewsTab />}
       {tab === 'Pro & Boost' && <SubscriptionsTab />}
       {tab === 'Site Settings' && <SiteSettingsTab />}
+      {tab === 'IT' && <ITTab />}
     </div>
   );
 }
@@ -1330,6 +1331,169 @@ function SiteSettingsTab() {
         </button>
         {saved && <span className="ml-2 text-sm text-emerald-600">{saved}</span>}
       </div>
+    </div>
+  );
+}
+
+// Taskora's side of BDT's "Site Protocol v1" -- generate a connection key
+// here, paste it once into BDT Admin -> Websites -> Add a website ->
+// Connect with API key, done. No environment variables, no redeploy.
+// See server/src/routes/it.routes.js and docs/SITE-PROTOCOL.md in the BDT
+// repo for the full protocol.
+function ITTab() {
+  const [status, setStatus] = useState(null);
+  const [issues, setIssues] = useState([]);
+  const [newKey, setNewKey] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const load = () => {
+    api.get('/admin/it/status').then(({ data }) => setStatus(data));
+    api.get('/admin/it/issues').then(({ data }) => setIssues(data.issues || []));
+  };
+  useEffect(load, []);
+
+  const generateKey = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post('/admin/it/connection-key');
+      setNewKey(data.connectionKey);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async () => {
+    setBusy(true);
+    try {
+      await api.post('/admin/it/revoke-key');
+      setNewKey(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    setBusy(true);
+    try {
+      await api.post('/admin/it/disconnect');
+      load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyKey = () => {
+    navigator.clipboard?.writeText(newKey).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  if (!status) return null;
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <p className="text-sm text-ink-700/60">
+        Servio Hub's "third back end" -- reports live status, crashes and bugs to Black Daddy Tech's admin dashboard in real time.
+        Generate a connection key below, paste it once into BDT Admin → Websites → Add a website → Connect with API key, and press
+        Connect there. Nothing here needs an environment variable or a redeploy.
+      </p>
+
+      <Card>
+        <h2 className="font-medium mb-2">Connection to BDT</h2>
+        <div className="mb-3 flex items-center gap-2 text-sm">
+          <span
+            className={`inline-block h-2.5 w-2.5 rounded-full ${status.connected ? 'bg-emerald-500' : 'bg-ink-900/20'}`}
+          />
+          {status.connected ? (
+            <span>
+              Connected to BDT{status.connectedAt ? ` since ${new Date(status.connectedAt).toLocaleString()}` : ''}.
+            </span>
+          ) : (
+            <span className="text-ink-700/60">Not connected yet.</span>
+          )}
+        </div>
+
+        {status.hasActiveKey ? (
+          <p className="mb-3 text-xs text-ink-700/60">
+            Active key: <span className="font-mono">{status.keyPrefix}…</span>
+            {status.keyLastUsedAt ? ` · last used ${new Date(status.keyLastUsedAt).toLocaleString()}` : ' · not used yet'}
+          </p>
+        ) : (
+          <p className="mb-3 text-xs text-ink-700/60">No connection key generated yet.</p>
+        )}
+
+        {newKey && (
+          <div className="mb-3 rounded-lg border border-ember-500/30 bg-ember-50 p-3">
+            <p className="mb-1 text-xs font-medium text-ember-800">
+              Copy this now -- it's shown once and can't be retrieved again. Paste it into BDT Admin → Websites → Add a website →
+              Connect with API key.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 overflow-x-auto rounded bg-white px-2 py-1.5 text-xs">{newKey}</code>
+              <button
+                onClick={copyKey}
+                className="shrink-0 rounded-full bg-ink-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-ink-800"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            disabled={busy}
+            onClick={generateKey}
+            className="rounded-full bg-ember-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60"
+          >
+            {status.hasActiveKey ? 'Generate new key (revokes the old one)' : 'Generate connection key'}
+          </button>
+          {status.hasActiveKey && (
+            <button
+              disabled={busy}
+              onClick={revoke}
+              className="rounded-full border border-ink-900/15 px-4 py-1.5 text-sm hover:bg-ink-900/5 disabled:opacity-60"
+            >
+              Revoke key
+            </button>
+          )}
+          {status.connected && (
+            <button
+              disabled={busy}
+              onClick={disconnect}
+              className="rounded-full border border-ink-900/15 px-4 py-1.5 text-sm hover:bg-ink-900/5 disabled:opacity-60"
+            >
+              Disconnect
+            </button>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-2">Recent errors (same ones BDT sees)</h2>
+        {issues.length === 0 ? (
+          <p className="text-sm text-ink-700/60">No server errors captured yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {issues.slice(0, 20).map((it) => (
+              <div key={it.id} className="rounded-lg border border-ink-900/8 p-2.5 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{it.title}</span>
+                  <span className="shrink-0 text-xs text-ink-700/50">×{it.occurrence_count}</span>
+                </div>
+                <p className="mt-0.5 text-xs text-ink-700/60">
+                  {it.detail?.route ? `${it.detail.route} · ` : ''}
+                  last seen {new Date(it.last_seen_at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

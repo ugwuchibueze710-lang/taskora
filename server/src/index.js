@@ -36,6 +36,8 @@ import adminRoutes from './routes/admin.routes.js';
 import agencyRoutes from './routes/agency.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import siteSettingsRoutes from './routes/site-settings.routes.js';
+import { itAdminRouter, itProtocolRouter } from './routes/it.routes.js';
+import { getSetting } from './services/settings.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -141,13 +143,41 @@ app.use('/api/support', supportRoutes);
 // Mounted before the broader /api/admin prefix so it's matched
 // unambiguously, rather than relying on adminRoutes falling through to it.
 app.use('/api/admin/agency', agencyRoutes);
+// Mounted before the broader /api/admin prefix for the same reason as
+// agency above. This is the admin-session half of the BDT connector (see
+// routes/it.routes.js) -- generate/revoke the connection key, check
+// status. The protocol half BDT itself calls is mounted separately below,
+// unauthenticated by admin session (it's a connection-key bearer token
+// instead).
+app.use('/api/admin/it', itAdminRouter);
 app.use('/api/admin', adminRoutes);
+// BDT's Site Protocol v1 (docs/SITE-PROTOCOL.md in bdt-website) -- BDT
+// calls these once a connection key generated in Admin -> IT is pasted
+// into BDT Admin -> Websites -> Add a website -> Connect with API key.
+app.use('/api/it/bdt', itProtocolRouter);
 
 // Serve the built client in production (single-service Render deploy).
 if (process.env.NODE_ENV === 'production') {
   const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
   app.use(express.static(clientDist));
-  app.get(/^(?!\/api|\/uploads|\/health).*/, (req, res) => {
+  app.get(/^(?!\/api|\/uploads|\/health).*/, async (req, res) => {
+    // Maintenance mode, set from BDT's "maintenance" command (see
+    // routes/it.routes.js's /api/it/bdt/commands) or later from the admin
+    // IT tab directly -- visitors see a brief message, but /admin and
+    // every /api route (including auth and the IT protocol routes
+    // themselves) keep working throughout.
+    if (!req.path.startsWith('/admin')) {
+      const on = await getSetting('it_maintenance_enabled', false).catch(() => false);
+      if (on === true) {
+        const message = (await getSetting('it_maintenance_message', null).catch(() => null)) || "We'll be back shortly.";
+        return res
+          .status(503)
+          .set('Retry-After', '120')
+          .send(
+            `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Servio Hub -- Maintenance</title><style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fafaf9;color:#1c1917;text-align:center;padding:1.5rem}div{max-width:420px}h1{font-size:1.25rem;margin-bottom:.5rem}p{color:#78716c;font-size:.95rem}</style></head><body><div><h1>Back shortly</h1><p>${message.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</p></div></body></html>`
+          );
+      }
+    }
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }

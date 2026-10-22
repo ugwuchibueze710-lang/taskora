@@ -74,12 +74,3 @@ services:
         sync: false
       - key: STRIPE_BOOST_PRICE_ID
         sync: false
-      # ---- Black Daddy Tech connector (optional) ----
-      # From BDT Admin > Websites > Servio Hub > Connect tab. Leave unset
-      # and this reports nothing -- see server/src/lib/bdt-connector.js.
-      - key: BDT_URL
-        sync: false
-      - key: BDT_SITE_ID
-        sync: false
-      - key: BDT_SITE_SECRET
-        sync: false
