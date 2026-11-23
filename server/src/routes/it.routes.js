@@ -29,7 +29,26 @@ itAdminRouter.use(requireAuth, requireLevel2Admin);
 itAdminRouter.get(
   '/status',
   asyncHandler(async (req, res) => {
-    res.json(await getConnectionStatus());
+    const status = await getConnectionStatus();
+    const maintenanceOn = (await getSetting('it_maintenance_enabled', false)) === true;
+    const maintenanceMessage = await getSetting('it_maintenance_message', null);
+    res.json({ ...status, maintenance: { on: maintenanceOn, message: maintenanceMessage } });
+  })
+);
+
+// Direct on/off switch for the Servio Hub admin IT tab -- the same switch
+// BDT can flip via the protocol's "maintenance" command below. Either side
+// can turn it on or off; whichever acts last wins, same as the BDT path.
+itAdminRouter.post(
+  '/maintenance',
+  asyncHandler(async (req, res) => {
+    const on = Boolean(req.body?.on);
+    const message = typeof req.body?.message === 'string' ? req.body.message.slice(0, 300) : null;
+    await setSetting('it_maintenance_enabled', on);
+    await setSetting('it_maintenance_message', message);
+    await logAdminAction({ adminUserId: req.user.id, actionType: on ? 'it_maintenance_enabled' : 'it_maintenance_disabled' });
+    const status = await getConnectionStatus();
+    res.json({ ...status, maintenance: { on, message } });
   })
 );
 
@@ -76,7 +95,7 @@ itAdminRouter.get(
   asyncHandler(async (req, res) => {
     const { rows } = await query(
       `SELECT id, severity, title, summary, detail, occurrence_count, status, created_at, last_seen_at
-         FROM agency_items WHERE kind = 'error_diagnosis' ORDER BY last_seen_at DESC LIMIT 100`
+         FROM agency_items WHERE kind IN ('error_diagnosis', 'action_suggestion') ORDER BY last_seen_at DESC LIMIT 100`
     );
     res.json({ issues: rows });
   })
@@ -190,21 +209,26 @@ itProtocolRouter.get(
     const since = req.query.since ? new Date(req.query.since.toString()) : null;
     const limit = Math.min(200, Number(req.query.limit) || 200);
     const params = [];
-    let where = `kind = 'error_diagnosis'`;
+    let where = `kind IN ('error_diagnosis', 'action_suggestion')`;
     if (since && !Number.isNaN(since.getTime())) {
       params.push(since.toISOString());
       where += ` AND last_seen_at > $${params.length}`;
     }
     params.push(limit);
     const { rows } = await query(
-      `SELECT id, severity, title, summary, detail, occurrence_count, created_at, last_seen_at
+      `SELECT id, kind, severity, title, summary, detail, occurrence_count, created_at, last_seen_at
          FROM agency_items WHERE ${where} ORDER BY last_seen_at ASC LIMIT $${params.length}`,
       params
     );
+    // Nothing held back here -- every captured error and proposed fix, at
+    // its real severity, stack trace included. User-support items never
+    // reach this query at all (see the WHERE clause above), so BDT simply
+    // never sees them; that split happens before this point, not by
+    // redacting fields here.
     const issues = rows.map((r) => ({
       id: r.id,
-      kind: 'server_error',
-      level: r.severity === 'critical' ? 'error' : 'warning',
+      kind: r.kind === 'action_suggestion' ? 'action_suggestion' : 'server_error',
+      level: r.severity === 'critical' ? 'error' : r.severity === 'warning' ? 'warning' : 'info',
       title: r.title,
       message: r.detail?.message || r.summary || r.title,
       stack: r.detail?.stack || null,

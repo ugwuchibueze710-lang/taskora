@@ -169,12 +169,14 @@ if (process.env.NODE_ENV === 'production') {
     if (!req.path.startsWith('/admin')) {
       const on = await getSetting('it_maintenance_enabled', false).catch(() => false);
       if (on === true) {
-        const message = (await getSetting('it_maintenance_message', null).catch(() => null)) || "We'll be back shortly.";
+        const message =
+          (await getSetting('it_maintenance_message', null).catch(() => null)) ||
+          "We're experiencing some technical issues. We'll be back shortly.";
         return res
           .status(503)
           .set('Retry-After', '120')
           .send(
-            `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Servio Hub -- Maintenance</title><style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fafaf9;color:#1c1917;text-align:center;padding:1.5rem}div{max-width:420px}h1{font-size:1.25rem;margin-bottom:.5rem}p{color:#78716c;font-size:.95rem}</style></head><body><div><h1>Back shortly</h1><p>${message.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</p></div></body></html>`
+            `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Servio Hub -- Maintenance</title><style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fafaf9;color:#1c1917;text-align:center;padding:1.5rem}div{max-width:420px}h1{font-size:1.25rem;margin-bottom:.5rem}p{color:#78716c;font-size:.95rem}</style></head><body><div><h1>Servio Hub is currently down</h1><p>${message.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</p></div></body></html>`
           );
       }
     }

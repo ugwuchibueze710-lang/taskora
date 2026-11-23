@@ -1346,12 +1346,26 @@ function ITTab() {
   const [newKey, setNewKey] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [maintMessage, setMaintMessage] = useState('');
 
   const load = () => {
-    api.get('/admin/it/status').then(({ data }) => setStatus(data));
+    api.get('/admin/it/status').then(({ data }) => {
+      setStatus(data);
+      setMaintMessage(data.maintenance?.message || '');
+    });
     api.get('/admin/it/issues').then(({ data }) => setIssues(data.issues || []));
   };
   useEffect(load, []);
+
+  const setMaintenance = async (on) => {
+    setBusy(true);
+    try {
+      await api.post('/admin/it/maintenance', { on, message: maintMessage || null });
+      load();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const generateKey = async () => {
     setBusy(true);
@@ -1471,6 +1485,49 @@ function ITTab() {
             </button>
           )}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-2">Site status</h2>
+        <div className="mb-3 flex items-center gap-2 text-sm">
+          <span
+            className={`inline-block h-2.5 w-2.5 rounded-full ${status.maintenance?.on ? 'bg-ember-500' : 'bg-emerald-500'}`}
+          />
+          <span>{status.maintenance?.on ? 'Servio Hub is showing the maintenance page to visitors.' : 'Servio Hub is live.'}</span>
+        </div>
+        <label className="mb-2 block text-xs font-medium text-ink-700/70">
+          Message shown to visitors while down
+        </label>
+        <input
+          type="text"
+          value={maintMessage}
+          onChange={(e) => setMaintMessage(e.target.value)}
+          placeholder="We're experiencing some technical issues. We'll be back shortly."
+          className="mb-3 w-full rounded-lg border border-ink-900/15 px-3 py-1.5 text-sm"
+          maxLength={300}
+        />
+        <div className="flex flex-wrap gap-2">
+          {status.maintenance?.on ? (
+            <button
+              disabled={busy}
+              onClick={() => setMaintenance(false)}
+              className="rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              Turn site back on
+            </button>
+          ) : (
+            <button
+              disabled={busy}
+              onClick={() => setMaintenance(true)}
+              className="rounded-full bg-ember-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-60"
+            >
+              Take site down for maintenance
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-ink-700/50">
+          BDT can flip this switch too, over the same connection. Either side turning it on or off wins immediately.
+        </p>
       </Card>
 
       <Card>
