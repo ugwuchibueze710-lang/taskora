@@ -29,11 +29,14 @@ body {
   border-radius: 999px;
 }
 
-/* Brand wordmark: the plain part in ink, the accent word in the signature gradient. */
+/* Brand wordmark: the plain part in ink, the accent word in the signature
+   gradient with a tight neon glow -- a sharp 1px edge plus a close 4px halo,
+   not a wide blur, so it stays crisp at nav-badge size as well as large. */
 .brand-wordmark-accent {
   background: linear-gradient(135deg, #6d35ee 0%, #9333ea 45%, #ec45c4 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+  filter: drop-shadow(0 0 1px rgba(236, 69, 196, 0.5)) drop-shadow(0 0 4px rgba(147, 51, 234, 0.4));
 }

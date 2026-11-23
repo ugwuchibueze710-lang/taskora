@@ -3,7 +3,9 @@
 // nav badge, and the auth pages all render the exact same brand instead of
 // four slightly-different hand-rolled versions.
 
-/** The gradient "S" icon on its own, no text. */
+/** The gradient "S" icon, lit with a tight neon glow -- a sharp core plus a
+ * close halo (not a diffuse haze), so it reads as a crisp lit sign at any
+ * size instead of a soft blur. */
 export function ServioIcon({ size = 32, className = '' }) {
   return (
     <svg
@@ -19,6 +21,15 @@ export function ServioIcon({ size = 32, className = '' }) {
           <stop offset="50%" stopColor="#9333ea" />
           <stop offset="100%" stopColor="#ec45c4" />
         </linearGradient>
+        <filter id="servioGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="core" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="halo" />
+          <feMerge>
+            <feMergeNode in="halo" />
+            <feMergeNode in="core" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
       <path
         d="M74,26 C74,13 61,6 49,6 C35,6 24,16 24,29 C24,43 38,47 50,51 C62,55 76,60 76,74 C76,87 64,94 50,94 C37,94 25,88 24,76"
@@ -27,6 +38,7 @@ export function ServioIcon({ size = 32, className = '' }) {
         strokeWidth="19"
         strokeLinecap="round"
         strokeLinejoin="round"
+        filter="url(#servioGlow)"
       />
     </svg>
   );

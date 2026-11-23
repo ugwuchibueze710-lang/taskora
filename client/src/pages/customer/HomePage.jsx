@@ -96,41 +96,54 @@ export default function HomePage() {
         </div>
       )}
 
-      <section className="rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 px-6 py-12 text-center text-white shadow-pop">
-        <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2">
-          {siteSettings.hero_title || 'Find someone who can do this.'}
-        </h1>
-        <p className="text-white/90 mb-6">
-          {locked
-            ? `Searching near ${location?.label || 'your location'}. Tell Servio Hub what you need and we'll find the right local pro.`
-            : siteSettings.hero_subtitle || 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
-        </p>
-        <form onSubmit={runSearch} className="mx-auto flex max-w-xl overflow-hidden rounded-full bg-white shadow-lg">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="What do you need help with?"
-            className="min-w-0 flex-1 px-5 py-4 text-navy-900 outline-none text-base"
-          />
-          <button disabled={loading} className="shrink-0 bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 transition">
-            {loading ? <Spinner size={18} /> : 'Search'}
-          </button>
-        </form>
+      {/* Real foreground photo, not a flat color panel -- a local pro actually
+          at work, same photo+gradient-overlay language as CategoryCard so the
+          hero reads as part of the app instead of a separate banner. */}
+      <section className="relative overflow-hidden rounded-3xl shadow-pop">
+        <img
+          src="/images/categories/handyman.jpg"
+          alt=""
+          loading="eager"
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-900/92 via-navy-900/55 to-navy-900/25" />
+        <div className="relative z-10 px-6 py-14 sm:py-20 text-center text-white">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold mb-2 drop-shadow-sm">
+            {siteSettings.hero_title || 'Find someone who can do this.'}
+          </h1>
+          <p className="text-white/90 mb-6">
+            {locked
+              ? `Searching near ${location?.label || 'your location'}. Tell Servio Hub what you need and we'll find the right local pro.`
+              : siteSettings.hero_subtitle || 'Set your location, then tell us what you need — matching a customer to the right provider depends on both.'}
+          </p>
+          <form onSubmit={runSearch} className="mx-auto flex max-w-xl overflow-hidden rounded-full bg-white shadow-lg">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="What do you need help with?"
+              className="min-w-0 flex-1 px-5 py-4 text-navy-900 outline-none text-base"
+            />
+            <button disabled={loading} className="shrink-0 bg-navy-900 px-6 font-semibold text-white hover:bg-navy-800 transition">
+              {loading ? <Spinner size={18} /> : 'Search'}
+            </button>
+          </form>
 
-        {history.length > 0 && (
-          <div className="mx-auto mt-4 flex max-w-xl flex-wrap justify-center gap-2">
-            {history.slice(0, 6).map((h) => (
-              <button
-                key={h.id}
-                onClick={() => navigate(`/search?q=${encodeURIComponent(h.query_text)}`)}
-                className="group flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs text-white hover:bg-white/25"
-              >
-                {h.query_text}
-                <span onClick={(e) => deleteHistory(h.id, e)} className="opacity-60 group-hover:opacity-100">✕</span>
-              </button>
-            ))}
-          </div>
-        )}
+          {history.length > 0 && (
+            <div className="mx-auto mt-4 flex max-w-xl flex-wrap justify-center gap-2">
+              {history.slice(0, 6).map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(h.query_text)}`)}
+                  className="group flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs text-white hover:bg-white/25"
+                >
+                  {h.query_text}
+                  <span onClick={(e) => deleteHistory(h.id, e)} className="opacity-60 group-hover:opacity-100">✕</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       <section>

@@ -145,12 +145,9 @@ export default function Nav() {
           {!isProvider && <LocationControl />}
           <NotificationBell />
           {/* The brand badge always sits top-right, icon over wordmark exactly
-              as in the logo artwork. It also doubles as the landing spot the
-              splash intro's animated "T" flies into on first load each
-              session -- see BrandIntro.jsx, which reads this element's
-              on-screen position via its id to land the handoff precisely. */}
+              as in the logo artwork -- crisp neon glow, same brand mark used
+              on the auth pages (ServioMark.jsx). */}
           <Link
-            id="servio-nav-badge"
             to={isProvider ? '/provider' : '/'}
             className="flex-shrink-0 transition-transform hover:scale-105"
             aria-label="Servio Hub home"
